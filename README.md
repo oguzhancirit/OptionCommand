@@ -67,6 +67,7 @@ Her öğeye `name`, `emoji` veya `icon = "~/resim.png"` eklenebilir. Web sitesin
 | `centerOnMouse` | `true` | `false`: çark hep ekranın ortasında açılır |
 | `hideOthers` | `false` | Uygulama açınca diğerlerini gizler |
 | `favicons` | `true` | Site simgelerini indirir |
+| `openDots` | `true` | Açık sekme ve klasörlerin altında nokta |
 | `menubar` | `true` | Menü çubuğunda `◎` simgesi |
 | `modes` | `{"items","running"}` | Çark türleri: kendi listen / açık uygulamalar |
 | `theme` | koyu | `ring`, `hub`, `accent`, `text`, `dot` renkleri |
@@ -83,7 +84,7 @@ Her öğeye `name`, `emoji` veya `icon = "~/resim.png"` eklenebilir. Web sitesin
 | `H` / `Q` | Seçili uygulamayı gizle / kapat |
 | `,` | Ayar sayfasını aç |
 
-Uygulama çalışıyorsa simgesinin altında küçük nokta görünür.
+Açık olan şeyin simgesinin altında küçük beyaz nokta görünür: çalışan uygulama, tarayıcıda açık sekmesi olan site (Safari, Chrome, Brave, Edge, Arc, Vivaldi, Opera), Finder'da açık klasör, içinde açık bir şey olan alt çark. Siteler ve klasörler için macOS ilk seferde "Hammerspoon, Chrome'u denetlemek istiyor" diye izin sorar; izin vermezsen sadece o tarayıcı için nokta çıkmaz. İstemezsen `openDots = false`.
 
 ## Benzerleriyle karşılaştırma
 

@@ -75,7 +75,7 @@ return function(obj, H)
       self:_js("init", {
         trigger = cfg.trigger, doublePress = cfg.doublePress, size = cfg.size,
         centerOnMouse = cfg.centerOnMouse, hideOthers = cfg.hideOthers,
-        favicons = cfg.favicons, items = obj._plainItems(cfg.items),
+        favicons = cfg.favicons, openDots = cfg.openDots, items = obj._plainItems(cfg.items),
       })
     elseif m.action == "icon" and type(m.item) == "table" then
       local function send(img)

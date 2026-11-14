@@ -225,6 +225,7 @@
         <h2>Davranış</h2>
         <label class="check"><input type="checkbox" id="hideOthers"><span class="box"></span>Uygulama açınca diğerlerini gizle</label>
         <label class="check"><input type="checkbox" id="favicons"><span class="box"></span>Web sitelerinin simgesini kendiliğinden indir</label>
+        <label class="check"><input type="checkbox" id="openDots"><span class="box"></span>Açık sekmeleri ve klasörleri de nokta ile göster</label>
         <p class="hint">Simge önce sitenin kendisinden, bulunamazsa Google’ın simge servisinden alınır ve Mac’inde saklanır.</p>
       </div>
     </div>
@@ -579,7 +580,7 @@ radios($('size'), [['tiny', 'Çok küçük'], ['small', 'Küçük'], ['medium', 
   v => { cfg.size = v; dirty(); });
 radios($('centerOnMouse'), [['true', 'İmlecin olduğu yerde'], ['false', 'Ekranın ortasında']], v => { cfg.centerOnMouse = v === 'true'; dirty(); });
 radios($('doublePress'), [['true', 'İki kez bas, ikincisinde basılı tut'], ['false', 'Sadece basılı tut']], v => { cfg.doublePress = v === 'true'; dirty(); });
-for (const id of ['hideOthers', 'favicons']) $(id).onchange = e => { cfg[id] = e.target.checked; dirty(); if (id === 'favicons') render(); };
+for (const id of ['hideOthers', 'favicons', 'openDots']) $(id).onchange = e => { cfg[id] = e.target.checked; dirty(); if (id === 'favicons') render(); };
 document.querySelectorAll('[data-mod]').forEach(c => c.onchange = () => {
   cfg.trigger = [...document.querySelectorAll('[data-mod]')].filter(x => x.checked).map(x => x.dataset.mod);
   dirty();
@@ -603,7 +604,7 @@ window.WL = {
   init(data) {
     cfg = data; cfg.items = fixUrls(normalize(cfg.items)); cfg.trigger = arr(cfg.trigger);
     stack = []; sel = cfg.items.length ? 0 : -1; slide = 0;
-    for (const id of ['hideOthers', 'favicons']) $(id).checked = !!cfg[id];
+    for (const id of ['hideOthers', 'favicons', 'openDots']) $(id).checked = cfg[id] !== false;
     setRadio($('size'), cfg.size || 'medium');
     setRadio($('centerOnMouse'), cfg.centerOnMouse !== false);
     setRadio($('doublePress'), cfg.doublePress !== false);

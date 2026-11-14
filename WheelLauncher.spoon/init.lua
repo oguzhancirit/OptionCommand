@@ -27,6 +27,7 @@ local DEFAULTS = {
   modes = { "items", "running" }, -- switch with ] and [ while the wheel is open
   maxRunning = 12,
   favicons = true,            -- download site icons once (see README: Gizlilik)
+  openDots = true,            -- dot under sites open in a browser tab and folders open in Finder
   menubar = true,             -- small menu bar icon that opens the settings page
   items = {},
   theme = {
@@ -38,7 +39,7 @@ local DEFAULTS = {
   },
 }
 
-local SAVED = { "trigger", "doublePress", "size", "centerOnMouse", "hideOthers", "favicons", "items" }
+local SAVED = { "trigger", "doublePress", "size", "centerOnMouse", "hideOthers", "favicons", "openDots", "items" }
 local EMOJI = { url = "🌐", shortcut = "⚡", cmd = "🖥", fn = "✨", keys = "⌨️", items = "📂", path = "📄" }
 
 local function expand(p)
@@ -139,6 +140,33 @@ local function labelFor(item)
   return item.shortcut or item.cmd or item.bundleID or "?"
 end
 
+-- Lists open browser tabs and Finder folders (JXA, so it works for every Chromium browser
+-- without a compiled dictionary). Browsers that are not running are skipped, never launched.
+local PROBE = [[
+function run() {
+  var out = [], ids = ['com.apple.Safari', 'com.google.Chrome', 'com.brave.Browser', 'com.microsoft.edgemac',
+    'company.thebrowser.Browser', 'com.vivaldi.Vivaldi', 'com.operasoftware.Opera', 'com.google.Chrome.canary'];
+  ids.forEach(function (id) {
+    try {
+      var a = Application(id); if (!a.running()) return;
+      a.windows().forEach(function (w) { try { w.tabs.url().forEach(function (u) { if (u) out.push('U\t' + u); }); } catch (e) {} });
+    } catch (e) {}
+  });
+  try {
+    var f = Application('com.apple.finder');
+    if (f.running()) f.finderWindows().forEach(function (w) { try { out.push('P\t' + w.target.url()); } catch (e) {} });
+  } catch (e) {}
+  return out.join('\n');
+}
+]]
+
+local function needsProbe(items)
+  for _, it in ipairs(items or {}) do
+    if it.url or (it.path and not it.items) or (it.items and needsProbe(it.items)) then return true end
+  end
+  return false
+end
+
 local function runningApp(item)
   if item.bundleID or item.app then return hs.application.get(item.bundleID or appName(item.app)) end
 end
@@ -198,6 +226,7 @@ function obj:_draw(items, cx, cy)
   local W = outer * 2 + 8
   local c = W / 2
   local ts = 14 * s
+  local dots = {}
 
   local els = {
     { type = "circle", action = "fill", center = { x = c, y = c }, radius = outer, fillColor = th.ring },
@@ -219,10 +248,9 @@ function obj:_draw(items, cx, cy)
       els[#els + 1] = { type = "text", text = emojiFor(item), textAlignment = "center",
         textSize = icon * 0.72, frame = { x = x - icon * 0.25, y = y, w = icon * 1.5, h = icon * 1.2 } }
     end
-    if runningApp(item) then
-      els[#els + 1] = { type = "circle", action = "fill", radius = 2.5 * s, fillColor = th.dot,
-        center = { x = c + dx, y = c + dy + icon / 2 + 5 * s } }
-    end
+    els[#els + 1] = { type = "circle", action = self:_isOpen(item) and "fill" or "skip", radius = 2.5 * s,
+      fillColor = th.dot, center = { x = c + dx, y = c + dy + icon / 2 + 5 * s } }
+    dots[i] = #els
   end
 
   local cv = hs.canvas.new({ x = cx - c, y = cy - c, w = W, h = W })
@@ -230,8 +258,45 @@ function obj:_draw(items, cx, cy)
   cv:level(hs.canvas.windowLevels.overlay)
   cv:behavior({ "canJoinAllSpaces", "stationary" })
   cv:show()
-  self._canvas, self._items, self._sel = cv, items, nil
+  self._canvas, self._items, self._sel, self._dots = cv, items, nil, dots
   self._cx, self._cy, self._inner, self._outer, self._c = cx, cy, inner, outer, c
+end
+
+--- Running app, open browser tab, open Finder folder, or (for a sub wheel) any of its items.
+function obj:_isOpen(item)
+  if runningApp(item) then return true end
+  local pr = self._probe
+  if item.items then
+    for _, c in ipairs(item.items) do
+      if self:_isOpen(c) then return true end
+    end
+    return false
+  end
+  if not pr then return false end
+  if item.url then return util.urlOpen(item.url, pr.tabs) end
+  if item.path then return util.pathOpen(expand(item.path), pr.paths) end
+  return false
+end
+
+function obj:_refreshDots()
+  local cv = self._canvas
+  if not cv or not self._dots then return end
+  for i, idx in pairs(self._dots) do
+    cv[idx].action = self:_isOpen(self._items[i]) and "fill" or "skip"
+  end
+end
+
+--- Ask the browsers and Finder what is open, then update the dots (the last answer is drawn meanwhile).
+function obj:_probeOpen(items)
+  if not self.cfg.openDots or self._probeTask or not needsProbe(items) then return end
+  self._probeTask = hs.task.new("/usr/bin/osascript", function(code, out)
+    self._probeTask = nil
+    if code ~= 0 then return end
+    local tabs, paths = util.parseProbe(out)
+    self._probe = { tabs = tabs, paths = paths }
+    if self._open then self:_refreshDots() end
+  end, { "-l", "JavaScript", "-e", PROBE })
+  self._probeTask:start()
 end
 
 function obj:_select(idx)
@@ -264,6 +329,7 @@ function obj:_show()
   self._stack = {}
   self:_draw(items, p.x, p.y)
   self._open = true
+  self:_probeOpen(items)
   self._keys:start()
   self._ticker = hs.timer.doEvery(1 / 60, function() self:_tick() end)
 end
@@ -273,6 +339,7 @@ function obj:_close()
   if self._ticker then self._ticker:stop() self._ticker = nil end
   self._keys:stop()
   if self._canvas then self._canvas:delete() self._canvas = nil end
+  self._dots = nil
 end
 
 function obj:_enter(item)

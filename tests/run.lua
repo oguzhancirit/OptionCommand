@@ -46,6 +46,24 @@ eq(N("https://"), "", "scheme only = empty")
 local tree = util.fixItems({ { url = "x.com" }, { items = { { url = "https://https://y.com" } } } })
 eq(tree[2].items[1].url, "https://y.com", "nested fix")
 
+-- ---- open tabs / folders
+local tabs = { "https://www.youtube.com/watch?v=1", "https://m.github.com/me/repo/issues", "https://chatgpt.com/" }
+eq(util.urlOpen("youtube.com", tabs), true, "www ignored")
+eq(util.urlOpen("https://youtube.com/", tabs), true, "trailing slash ignored")
+eq(util.urlOpen("github.com/me/repo", tabs), true, "subdomain + path prefix")
+eq(util.urlOpen("github.com/me/repository", tabs), false, "path prefix must end at a slash")
+eq(util.urlOpen("github.com/other", tabs), false, "other path")
+eq(util.urlOpen("hub.com", tabs), false, "not a suffix match")
+eq(util.urlOpen("https://chatgpt.com", tabs), true, "plain host")
+eq(util.urlOpen("gmail.com", {}), false, "no tabs")
+eq(util.filePath("file:///Users/me/My%20Files/"), "/Users/me/My Files", "file url decoded")
+eq(util.filePath("file:///"), "/", "root kept")
+local t2, p2 = util.parseProbe("U\thttps://a.com/x\nP\tfile:///Users/me/Downloads/\njunk\n")
+eq(#t2, 1, "probe tabs")
+eq(p2[1], "/Users/me/Downloads", "probe paths")
+eq(util.pathOpen("/Users/me/Downloads/", p2), true, "folder open")
+eq(util.pathOpen("/Users/me/Desktop", p2), false, "folder closed")
+
 -- ---- fake Hammerspoon
 local function stub()
   return setmetatable({}, {
@@ -160,6 +178,20 @@ eq(wl._open, false, "escape closes")
 open()
 eq(key(0), false, "other keys pass through")
 eq(wl._open, false, "other keys cancel")
+
+-- dots: open tabs / folders
+flags(none) -- the last test left the keys held
+open()
+eq(wl._open, true, "wheel open for the dot test")
+eq(wl._dots ~= nil and #wl._dots, 4, "every slot has a dot element")
+eq(canvas[wl._dots[2]].action, "skip", "site not open yet")
+wl._probe = { tabs = { "https://www.github.com/me" }, paths = {} }
+wl:_refreshDots()
+eq(canvas[wl._dots[2]].action, "fill", "open tab shows a dot")
+eq(canvas[wl._dots[1]].action, "skip", "closed app has no dot")
+eq(canvas[wl._dots[3]].action, "skip", "group with nothing open")
+key(53)
+wl._probe = nil
 
 -- settings page
 open()

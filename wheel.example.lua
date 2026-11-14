@@ -5,7 +5,8 @@ return {
   trigger = { "cmd", "alt" }, -- çarkı açan tuşlar: cmd, alt, ctrl, shift
   doublePress = true,         -- true: iki kez bas, ikincisinde basılı tut · false: sadece basılı tut
   size = "medium",            -- tiny | small | medium | large | xlarge
-  hideOthers = false,         -- true: uygulama açınca diğerlerini gizle
+  hideOthers = false,
+  openDots = true,            -- açık sekme ve Finder klasörlerinin altında da nokta         -- true: uygulama açınca diğerlerini gizle
 
   items = {
     { app = "Claude" },
