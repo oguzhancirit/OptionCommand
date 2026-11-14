@@ -1,4 +1,5 @@
 -- WheelLauncher ayarları. Kaydedince kendiliğinden yenilenir.
+-- Kolay yol: menü çubuğundaki ◎ → Ayarlar… (oradan kaydettiklerin bu dosyanın önüne geçer).
 -- İlk öğe çarkın tepesinde durur, diğerleri saat yönünde dizilir. Sayı sınırı yok.
 return {
   trigger = { "cmd", "alt" }, -- çarkı açan tuşlar: cmd, alt, ctrl, shift
@@ -13,7 +14,7 @@ return {
     { app = "Google Chrome" },
 
     -- Web sitesi (browser = "com.brave.Browser" yazarsan o tarayıcıda açılır)
-    { url = "https://github.com", name = "GitHub", emoji = "🐙" },
+    { url = "https://github.com", name = "GitHub" },
 
     -- Klasör veya dosya
     { path = "~/Downloads", name = "İndirilenler" },
@@ -31,8 +32,8 @@ return {
     {
       name = "Siteler", emoji = "📂",
       items = {
-        { url = "https://youtube.com", name = "YouTube", emoji = "▶️" },
-        { url = "https://mail.google.com", name = "Gmail", emoji = "✉️" },
+        { url = "https://youtube.com", name = "YouTube" },
+        { url = "https://chatgpt.com", name = "ChatGPT" },
         { url = "https://calendar.google.com", name = "Takvim", emoji = "📅" },
       },
     },

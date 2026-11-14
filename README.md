@@ -31,7 +31,16 @@ Launchy hâlâ açıksa aynı tuşu o da yakalar; onu kapat.
 
 ## Ayarlar
 
-Dosya: `~/.hammerspoon/wheel.lua`. Kaydedince kendiliğinden yenilenir.
+**Kolay yol — ayar sayfası:** menü çubuğundaki `◎` simgesi → **Ayarlar…** (ya da çark açıkken `,` tuşu). Buradan kısayol ekler, siler, sırasını değiştirir, alt çark kurar, boyutu ve açma tuşlarını seçersin. **Kaydet**'e basınca çark hemen güncellenir.
+
+**Simgeler:**
+- Uygulama, klasör ve dosyaların simgesi kendiliğinden gelir.
+- Web sitelerinin simgesi (YouTube, ChatGPT…) ilk seferde indirilir ve `~/.hammerspoon/wheel-icons/` içinde saklanır.
+- İstersen her öğeye kendi resmini (`Resim → Seç…`) ya da bir emoji koyabilirsin.
+
+**Gizlilik:** Tek internet bağlantısı site simgesi indirmektir: önce sitenin kendisinden, bulunamazsa Google'ın simge servisinden (sadece site adı gider). İstemezsen ayar sayfasından kapat ya da `favicons = false` yaz.
+
+**Dosyadan ayar (isteğe bağlı):** `~/.hammerspoon/wheel.lua`. Ayar sayfasından kaydettiklerin `wheel.json` dosyasına yazılır ve Lua dosyasının önüne geçer. Sadece Lua dosyasını kullanmak istersen `wheel.json`'u sil.
 
 ```lua
 items = {
@@ -54,6 +63,8 @@ Her öğeye `name`, `emoji` veya `icon = "~/resim.png"` eklenebilir. Web sitesin
 | `size` | `"medium"` | `tiny` `small` `medium` `large` `xlarge` |
 | `centerOnMouse` | `true` | `false`: çark hep ekranın ortasında açılır |
 | `hideOthers` | `false` | Uygulama açınca diğerlerini gizler |
+| `favicons` | `true` | Site simgelerini indirir |
+| `menubar` | `true` | Menü çubuğunda `◎` simgesi |
 | `modes` | `{"items","running"}` | Çark türleri: kendi listen / açık uygulamalar |
 | `theme` | koyu | `ring`, `hub`, `accent`, `text`, `dot` renkleri |
 
@@ -67,6 +78,7 @@ Her öğeye `name`, `emoji` veya `icon = "~/resim.png"` eklenebilir. Web sitesin
 | İmleci klasör diliminden dışarı it | Alt çarkı aç (`⌫` geri) |
 | `]` `[` | Çark türünü değiştir (açık uygulamalar) |
 | `H` / `Q` | Seçili uygulamayı gizle / kapat |
+| `,` | Ayar sayfasını aç |
 
 Uygulama çalışıyorsa simgesinin altında küçük nokta görünür.
 
@@ -76,15 +88,21 @@ Uygulama çalışıyorsa simgesinin altında küçük nokta görünür.
 |---|---|---|---|
 | Ücret | Ücretsizde 4 öğe | Ücretsiz, açık kaynak | **Ücretsiz, açık kaynak** |
 | Öğe sayısı | Sınırlı | Sınırsız | **Sınırsız** |
-| Kurulan şey | Ayrı uygulama | Ayrı uygulama (Electron) | **Hammerspoon + 2 küçük dosya** |
+| Kurulan şey | Ayrı uygulama | Ayrı uygulama (Electron) | **Hammerspoon + küçük bir eklenti** |
 | Alt menü | — | Var | **Var** |
-| Ayar şekli | Pencere | Pencere | Tek metin dosyası |
+| Ayar şekli | Pencere | Pencere | **Pencere veya metin dosyası** |
 
 Alınan fikirler: tuşu bırakınca açma, çalışan uygulama noktası ve çark türü değiştirme (Launchy); alt çarklar (Kando); sayı tuşuyla hızlı seçim ve ortada iptal bölgesi (klasik pie menü tasarımı).
 
-Eksik olan: ayar penceresi yok, öğeler metin dosyasından düzenlenir.
-
 ## Geliştirme
+
+Güncellemek için:
+
+```bash
+cd ~/optioncommand && git pull && ./install.sh
+```
+
+Testler:
 
 ```bash
 lua5.4 tests/run.lua

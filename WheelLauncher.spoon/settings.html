@@ -1,0 +1,279 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<title>WheelLauncher</title>
+<style>
+  :root {
+    --bg: #f4f2ef; --card: #ffffff; --line: #dedad4; --text: #1f1d1a; --dim: #77726a;
+    --accent: #e8703a; --accent-soft: rgba(232,112,58,.16); --ring: #2a2623; --hub: #3d3834;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #1d1b19; --card: #292623; --line: #3d3935; --text: #f1eeea; --dim: #a39d94;
+      --accent-soft: rgba(232,112,58,.24); --ring: #100f0e; --hub: #2b2825; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+    font: 13px/1.45 -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif; }
+  header { display: flex; align-items: center; gap: 12px; padding: 12px 18px;
+    border-bottom: 1px solid var(--line); position: sticky; top: 0; background: var(--bg); z-index: 2; }
+  header h1 { font-size: 15px; margin: 0; flex: 1; }
+  #status { color: var(--dim); }
+  main { display: grid; grid-template-columns: 380px 1fr; gap: 16px; padding: 16px 18px; }
+  @media (max-width: 760px) { main { grid-template-columns: 1fr; } }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 14px; }
+  .card + .card { margin-top: 14px; }
+  h2 { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--dim); margin: 0 0 10px; }
+  button, select, input[type=text] { font: inherit; color: inherit; }
+  button { background: var(--card); border: 1px solid var(--line); border-radius: 7px; padding: 5px 11px; cursor: pointer; }
+  button:hover { border-color: var(--accent); }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+  button.danger { color: #d0432f; }
+  button:disabled { opacity: .4; cursor: default; }
+  input[type=text], select { width: 100%; background: var(--bg); border: 1px solid var(--line);
+    border-radius: 7px; padding: 6px 9px; }
+  input[type=text]:focus, select:focus { outline: 2px solid var(--accent-soft); border-color: var(--accent); }
+  label.row { display: grid; grid-template-columns: 96px 1fr; align-items: center; gap: 10px; margin-bottom: 9px; }
+  label.row > span { color: var(--dim); }
+  .inline { display: flex; gap: 6px; align-items: center; }
+  .inline input { flex: 1; min-width: 0; }
+  label.check { display: flex; gap: 8px; align-items: center; margin-bottom: 7px; }
+  .hint { color: var(--dim); font-size: 12px; margin: 8px 0 0; }
+
+  #crumb { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; min-height: 28px; }
+  #crumb b { flex: 1; }
+  #wheel { position: relative; width: 340px; height: 340px; margin: 0 auto; border-radius: 50%; background: var(--ring); }
+  #hub { position: absolute; inset: 90px; border-radius: 50%; background: var(--hub); color: #fff;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; text-align: center; padding: 8px; }
+  #hubLabel { max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #add { background: var(--accent); border: 0; color: #fff; border-radius: 16px; padding: 4px 12px; font-weight: 600; }
+  .slot { position: absolute; transform: translate(-50%, -50%); border: 2px solid transparent; border-radius: 14px;
+    background: transparent; padding: 0; display: flex; align-items: center; justify-content: center; line-height: 1; }
+  .slot.on { border-color: var(--accent); background: var(--accent-soft); }
+  .slot img { width: 82%; height: 82%; object-fit: contain; pointer-events: none; }
+  #empty { color: var(--dim); text-align: center; padding: 20px 0; }
+  .mods label { margin-right: 12px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>WheelLauncher ayarları</h1>
+  <span id="status"></span>
+  <button class="primary" id="save">Kaydet</button>
+</header>
+<main>
+  <section>
+    <div class="card">
+      <div id="crumb"><button id="back" hidden>‹ Geri</button><b id="crumbText">Ana çark</b></div>
+      <div id="wheel">
+        <div id="hub"><span id="hubLabel"></span><button id="add">+ Ekle</button></div>
+      </div>
+      <p class="hint">Bir simgeye tıkla, sağdan düzenle. İlk öğe tepede durur, diğerleri saat yönünde dizilir.</p>
+    </div>
+  </section>
+
+  <section>
+    <div class="card" id="editor">
+      <h2>Seçili kısayol</h2>
+      <div id="empty">Soldan bir simge seç ya da “+ Ekle”ye bas.</div>
+      <div id="form" hidden>
+        <label class="row"><span>Tür</span><select id="type"></select></label>
+        <label class="row" id="valueRow"><span id="valueName">Değer</span>
+          <span class="inline"><input type="text" id="value" spellcheck="false"><button id="pick">Seç…</button></span></label>
+        <label class="row"><span>Ad</span><input type="text" id="name" placeholder="Boş bırakırsan kendisi bulur"></label>
+        <label class="row"><span>Emoji</span><input type="text" id="emoji" placeholder="Boş = simge kendiliğinden gelir" maxlength="8"></label>
+        <label class="row"><span>Resim</span>
+          <span class="inline"><input type="text" id="icon" placeholder="Kendi resmin (isteğe bağlı)" spellcheck="false">
+            <button id="pickIcon">Seç…</button></span></label>
+        <div class="inline" style="margin-top:12px">
+          <button id="left">◀ Öne al</button><button id="right">Sona doğru ▶</button>
+          <button id="open" hidden>İçini düzenle ›</button>
+          <span style="flex:1"></span><button class="danger" id="del">Sil</button>
+        </div>
+        <p class="hint" id="typeHint"></p>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Genel</h2>
+      <label class="row"><span>Çark boyutu</span><select id="size">
+        <option value="tiny">Çok küçük</option><option value="small">Küçük</option><option value="medium">Orta</option>
+        <option value="large">Büyük</option><option value="xlarge">Çok büyük</option></select></label>
+      <label class="row"><span>Açma tuşları</span><span class="mods">
+        <label><input type="checkbox" data-mod="cmd"> ⌘</label><label><input type="checkbox" data-mod="alt"> ⌥</label>
+        <label><input type="checkbox" data-mod="ctrl"> ⌃</label><label><input type="checkbox" data-mod="shift"> ⇧</label></span></label>
+      <label class="check"><input type="checkbox" id="doublePress"> İki kez bas, ikincisinde basılı tut (kapalıysa: sadece basılı tut)</label>
+      <label class="check"><input type="checkbox" id="centerOnMouse"> Çark imlecin olduğu yerde açılsın</label>
+      <label class="check"><input type="checkbox" id="hideOthers"> Uygulama açınca diğerlerini gizle</label>
+      <label class="check"><input type="checkbox" id="favicons"> Web sitelerinin simgesini kendiliğinden indir</label>
+    </div>
+  </section>
+</main>
+
+<script>
+const $ = id => document.getElementById(id);
+const post = m => { try { window.webkit.messageHandlers.wheel.postMessage(m); } catch (e) {} };
+const TYPES = { app: 'Uygulama', url: 'Web sitesi', path: 'Klasör / dosya', shortcut: 'Mac Kısayolu',
+  cmd: 'Terminal komutu', group: 'Alt çark', other: 'Özel (dosyadan)' };
+const FIELDS = ['app', 'url', 'path', 'shortcut', 'cmd'];
+const DEFAULT_EMOJI = { app: '❔', url: '🌐', path: '📄', shortcut: '⚡', cmd: '🖥', group: '📂', other: '✨' };
+const VALUE_NAME = { app: 'Uygulama', url: 'Adres', path: 'Konum', shortcut: 'Kısayol adı', cmd: 'Komut' };
+const HINTS = {
+  app: 'Uygulamanın simgesi kendiliğinden gelir.',
+  url: 'Sitenin simgesi (YouTube, ChatGPT…) kendiliğinden indirilir. Adres https:// ile başlamalı.',
+  path: 'Bir klasör ya da dosya. Simgesi kendiliğinden gelir.',
+  shortcut: 'Mac’teki “Kısayollar” uygulamasında yazan adın aynısı.',
+  cmd: 'Terminal’e yazdığın bir komut.',
+  group: 'İçinde başka kısayollar olan ikinci bir çark. Kullanırken imleci dilimin dışına doğru it.',
+  other: 'Bu öğe ayar dosyasından geliyor; burada sadece adı ve simgesi değişir.',
+};
+
+let cfg = { items: [], trigger: ['cmd', 'alt'] };
+let stack = [];   // open sub-wheels (group items)
+let sel = -1;
+const icons = {}; // key -> data URL | false | 'wait'
+
+const arr = v => Array.isArray(v) ? v : [];
+const list = () => stack.length ? stack[stack.length - 1].items : cfg.items;
+const typeOf = it => 'items' in it ? 'group' : (FIELDS.find(f => f in it) || 'other');
+const iconKey = it => JSON.stringify([typeOf(it), it[typeOf(it)] || '', it.icon || '', it.bundleID || '']);
+function labelOf(it) {
+  if (it.name) return it.name;
+  const t = typeOf(it), v = it[t] || '';
+  if (t === 'url') return (v.match(/^\w+:\/\/([^\/]+)/) || [])[1] || v;
+  if (t === 'path' || t === 'app') return v.replace(/\.app\/?$/, '').replace(/\/$/, '').split('/').pop() || v;
+  if (t === 'group') return 'Alt çark';
+  return v || '?';
+}
+function normalize(items) {
+  return arr(items).map(it => { if ('items' in it) it.items = normalize(it.items); return it; });
+}
+
+function requestIcons() {
+  for (const it of list()) {
+    const k = iconKey(it), t = typeOf(it);
+    if (it.emoji || t === 'group' || k in icons) continue;
+    if (!it[t] && !it.icon && !it.bundleID) continue;
+    icons[k] = 'wait';
+    post({ action: 'icon', key: k, item: it, favicons: cfg.favicons });
+  }
+}
+
+function renderWheel() {
+  const L = list(), wheel = $('wheel');
+  wheel.querySelectorAll('.slot').forEach(e => e.remove());
+  const R = 130, size = Math.min(58, 2 * Math.PI * R / Math.max(L.length, 1) * 0.72);
+  L.forEach((it, i) => {
+    const a = i * 2 * Math.PI / L.length;
+    const b = document.createElement('button');
+    b.className = 'slot' + (i === sel ? ' on' : '');
+    b.style.cssText = `left:${170 + R * Math.sin(a)}px;top:${170 - R * Math.cos(a)}px;width:${size}px;height:${size}px;font-size:${size * 0.6}px`;
+    b.title = labelOf(it);
+    const url = icons[iconKey(it)];
+    if (!it.emoji && typeof url === 'string' && url !== 'wait') {
+      const img = document.createElement('img'); img.src = url; b.append(img);
+    } else b.textContent = it.emoji || DEFAULT_EMOJI[typeOf(it)];
+    b.onclick = () => { sel = i; render(); };
+    wheel.append(b);
+  });
+  $('hubLabel').textContent = sel >= 0 && L[sel] ? labelOf(L[sel]) : (L.length ? '' : 'Çark boş');
+  $('crumbText').textContent = ['Ana çark', ...stack.map(labelOf)].join(' › ');
+  $('back').hidden = !stack.length;
+}
+
+function fillForm() {
+  const it = list()[sel];
+  $('form').hidden = !it; $('empty').hidden = !!it;
+  if (!it) return;
+  const t = typeOf(it);
+  $('type').value = t;
+  $('type').disabled = t === 'other';
+  $('valueRow').hidden = t === 'group' || t === 'other';
+  $('valueName').textContent = VALUE_NAME[t] || '';
+  $('value').value = it[t] && typeof it[t] === 'string' ? it[t] : '';
+  $('pick').hidden = !(t === 'app' || t === 'path');
+  $('name').value = it.name || '';
+  $('emoji').value = it.emoji || '';
+  $('icon').value = it.icon || '';
+  $('open').hidden = t !== 'group';
+  $('typeHint').textContent = HINTS[t];
+  $('left').disabled = sel === 0; $('right').disabled = sel === list().length - 1;
+}
+function render() { requestIcons(); renderWheel(); fillForm(); }
+function dirty() { $('status').textContent = 'Kaydedilmedi'; }
+
+function setField(key, value) {
+  const it = list()[sel]; if (!it) return;
+  if (value) it[key] = value; else delete it[key];
+  dirty(); renderWheel();
+}
+$('value').oninput = e => { const it = list()[sel]; if (!it) return; it[typeOf(it)] = e.target.value.trim(); dirty(); renderWheel(); };
+$('value').onchange = () => { requestIcons(); };
+$('name').oninput = e => setField('name', e.target.value.trim());
+$('emoji').oninput = e => setField('emoji', e.target.value.trim());
+$('icon').oninput = e => setField('icon', e.target.value.trim());
+$('icon').onchange = () => requestIcons();
+$('type').onchange = e => {
+  const it = list()[sel]; if (!it) return;
+  const old = typeOf(it), t = e.target.value;
+  if (t === 'other') { e.target.value = old; return; }
+  delete it[old]; delete it.browser;
+  if (t === 'group') it.items = []; else it[t] = '';
+  dirty(); render();
+};
+$('add').onclick = () => { list().push({ url: 'https://' }); sel = list().length - 1; dirty(); render(); $('value').focus(); };
+$('del').onclick = () => { list().splice(sel, 1); sel = Math.min(sel, list().length - 1); dirty(); render(); };
+function move(d) {
+  const L = list(), j = sel + d; if (j < 0 || j >= L.length) return;
+  [L[sel], L[j]] = [L[j], L[sel]]; sel = j; dirty(); render();
+}
+$('left').onclick = () => move(-1);
+$('right').onclick = () => move(1);
+$('open').onclick = () => { stack.push(list()[sel]); sel = -1; render(); };
+$('back').onclick = () => { const g = stack.pop(); sel = list().indexOf(g); render(); };
+$('pick').onclick = () => post({ action: 'pick', what: typeOf(list()[sel]) });
+$('pickIcon').onclick = () => post({ action: 'pick', what: 'icon' });
+
+for (const [k, v] of Object.entries(TYPES)) {
+  const o = document.createElement('option'); o.value = k; o.textContent = v; $('type').append(o);
+}
+for (const id of ['doublePress', 'centerOnMouse', 'hideOthers', 'favicons'])
+  $(id).onchange = e => { cfg[id] = e.target.checked; dirty(); if (id === 'favicons') render(); };
+$('size').onchange = e => { cfg.size = e.target.value; dirty(); };
+document.querySelectorAll('[data-mod]').forEach(c => c.onchange = () => {
+  cfg.trigger = [...document.querySelectorAll('[data-mod]')].filter(x => x.checked).map(x => x.dataset.mod);
+  dirty();
+});
+
+function clean(items) { // drop half-filled rows before saving
+  return items.filter(it => { const t = typeOf(it); return t === 'group' || t === 'other' || it[t]; })
+    .map(it => 'items' in it ? { ...it, items: clean(it.items) } : it);
+}
+$('save').onclick = () => {
+  if (!cfg.trigger.length) { $('status').textContent = 'En az bir açma tuşu seç'; return; }
+  $('status').textContent = 'Kaydediliyor…';
+  post({ action: 'save', cfg: { ...cfg, items: clean(cfg.items) } });
+};
+
+window.WL = {
+  init(data) {
+    cfg = data; cfg.items = normalize(cfg.items); cfg.trigger = arr(cfg.trigger);
+    stack = []; sel = cfg.items.length ? 0 : -1;
+    for (const id of ['doublePress', 'centerOnMouse', 'hideOthers', 'favicons']) $(id).checked = !!cfg[id];
+    $('size').value = cfg.size || 'medium';
+    document.querySelectorAll('[data-mod]').forEach(c => c.checked = cfg.trigger.includes(c.dataset.mod));
+    $('status').textContent = '';
+    render();
+  },
+  icon(key, url) { icons[key] = url; renderWheel(); },
+  picked(what, value) {
+    const it = list()[sel]; if (!it) return;
+    if (what === 'icon') it.icon = value; else it[what] = value;
+    dirty(); render();
+  },
+  saved() { $('status').textContent = 'Kaydedildi ✓'; },
+};
+post({ action: 'ready' });
+</script>
+</body>
+</html>

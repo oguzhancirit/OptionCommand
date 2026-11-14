@@ -51,7 +51,20 @@ hs.application.runningApplications = function() return {} end
 hs.application.launchOrFocus = function(name) ran[#ran + 1] = name end
 hs.urlevent.openURL = function(u) ran[#ran + 1] = u end
 hs.timer.secondsSinceEpoch = function() return 1000 end
-hs.keycodes.map = { [53] = "escape", [18] = "1", [0] = "a" }
+hs.keycodes.map = { [53] = "escape", [18] = "1", [0] = "a", [43] = "," }
+local savedJson, written, jsCalls = nil, nil, {}
+hs.json.read = function() return savedJson end
+hs.json.write = function(data, path) written = { data = data, path = path } end
+hs.json.encode = function() return "[]" end
+hs.fs.attributes = function(p) return (savedJson and p:match("wheel%.json$")) and {} or nil end
+hs.screen.mainScreen = function() return { frame = function() return { x = 0, y = 0, w = 1440, h = 900 } end } end
+hs.webview.new = function()
+  local w = {}
+  return setmetatable(w, { __index = function(_, k)
+    if k == "evaluateJavaScript" then return function(_, js) jsCalls[#jsCalls + 1] = js end end
+    return function() return w end
+  end })
+end
 hs.eventtap.event.types = { keyDown = 10, flagsChanged = 12 }
 hs.eventtap.new = function(types, fn)
   local t = { fn = fn }
@@ -127,6 +140,29 @@ eq(wl._open, false, "escape closes")
 open()
 eq(key(0), false, "other keys pass through")
 eq(wl._open, false, "other keys cancel")
+
+-- settings page
+open()
+eq(key(43), true, "comma swallowed")
+eq(wl._open, false, "comma closes the wheel")
+eq(wl._wv ~= nil, true, "comma opens settings")
+wl:_onSettingsMsg({ action = "ready" })
+eq(jsCalls[#jsCalls]:match("^WL%.init%(") ~= nil, true, "page gets init")
+local plain = wl._plainItems({ { app = "A" }, { name = "f", fn = function() end }, { name = "g", items = { { url = "u" } } } })
+eq(#plain, 2, "function items are not sent to the page")
+eq(plain[2].items[1].url, "u", "nested items kept")
+wl:_onSettingsMsg({ action = "save", cfg = { size = "large", items = { { app = "Notes" } } } })
+eq(written.data.size, "large", "save writes json")
+eq(written.path:match("wheel%.json$") ~= nil, true, "save path")
+eq(jsCalls[#jsCalls], "WL.saved()", "page told it was saved")
+
+-- saved json wins over the Lua config
+savedJson = { size = "large", items = { { app = "Notes" } } }
+wl:start({ size = "tiny", doublePress = false, items = { { app = "Claude" } } })
+eq(wl.cfg.size, "large", "json size wins")
+eq(wl.cfg.items[1].app, "Notes", "json items win")
+eq(wl.cfg.doublePress, false, "keys missing from json come from Lua")
+savedJson = nil
 
 wl:start({ doublePress = false, items = { { app = "Claude" } } })
 eq(wl.cfg.theme.ring.alpha, 0.82, "theme defaults kept")

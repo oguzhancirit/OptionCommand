@@ -4,7 +4,7 @@ set -euo pipefail
 cd "$(dirname "$0")"
 H="$HOME/.hammerspoon"
 mkdir -p "$H/Spoons/WheelLauncher.spoon"
-cp WheelLauncher.spoon/*.lua "$H/Spoons/WheelLauncher.spoon/"
+cp WheelLauncher.spoon/* "$H/Spoons/WheelLauncher.spoon/"
 [ -f "$H/wheel.lua" ] || cp wheel.example.lua "$H/wheel.lua"
 if ! grep -q WheelLauncher "$H/init.lua" 2>/dev/null; then
   cat >> "$H/init.lua" <<'EOF'

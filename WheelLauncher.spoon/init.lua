@@ -9,7 +9,8 @@ obj.version = "0.1.0"
 obj.author = "WheelLauncher contributors"
 obj.license = "MIT - https://opensource.org/licenses/MIT"
 
-local geo = dofile(hs.spoons.resourcePath("geometry.lua"))
+local DIR = hs.spoons.resourcePath("")
+local geo = dofile(DIR .. "geometry.lua")
 
 local SIZES = { tiny = 0.6, small = 0.8, medium = 1, large = 1.25, xlarge = 1.5 }
 local MODS = { "cmd", "alt", "ctrl", "shift" }
@@ -24,6 +25,8 @@ local DEFAULTS = {
   hideOthers = false,         -- hide every other app after launching one
   modes = { "items", "running" }, -- switch with ] and [ while the wheel is open
   maxRunning = 12,
+  favicons = true,            -- download site icons once (see README: Gizlilik)
+  menubar = true,             -- small menu bar icon that opens the settings page
   items = {},
   theme = {
     ring = { white = 0.08, alpha = 0.82 },
@@ -34,6 +37,7 @@ local DEFAULTS = {
   },
 }
 
+local SAVED = { "trigger", "doublePress", "size", "centerOnMouse", "hideOthers", "favicons", "items" }
 local EMOJI = { url = "🌐", shortcut = "⚡", cmd = "🖥", fn = "✨", keys = "⌨️", items = "📂", path = "📄" }
 
 local function expand(p)
@@ -50,6 +54,7 @@ local function merge(base, over)
 end
 
 local function appPath(name)
+  if name:sub(1, 1) == "/" then return hs.fs.attributes(name) and name or nil end
   local dirs = { "/Applications/", "/System/Applications/", "/System/Applications/Utilities/",
     "/Applications/Utilities/", expand("~/Applications/") }
   for _, d in ipairs(dirs) do
@@ -58,7 +63,50 @@ local function appPath(name)
   end
 end
 
-local function iconFor(item)
+local function appName(app)
+  return app:match("([^/]+)%.app/?$") or app
+end
+
+-- Site icons are downloaded once and kept in ~/.hammerspoon/wheel-icons/.
+local ICON_DIR = expand("~/.hammerspoon/wheel-icons/")
+local fetching = {}
+
+local function hostOf(url)
+  return url:match("^%a+://([^/:?#]+)")
+end
+
+local function siteIconPath(url)
+  local h = hostOf(url)
+  return h and (ICON_DIR .. h:gsub("[^%w%.%-]", "_") .. ".png")
+end
+
+local function fetchSiteIcon(url, done)
+  local host, dest = hostOf(url), siteIconPath(url)
+  if not host or fetching[host] then return end
+  fetching[host] = true -- stays set after a failure: no retry until the next reload
+  hs.fs.mkdir(ICON_DIR)
+  local sources = {
+    "https://" .. host .. "/apple-touch-icon.png",
+    "https://www.google.com/s2/favicons?sz=128&domain=" .. host,
+  }
+  local function try(i)
+    if not sources[i] then return end
+    hs.image.imageFromURL(sources[i], function(img)
+      if img and img:size().w >= 32 then
+        img:saveToFile(dest)
+        fetching[host] = nil
+        if done then done(img) end
+      else
+        try(i + 1)
+      end
+    end)
+  end
+  try(1)
+end
+
+--- Icon for an item, or nil when an emoji should be drawn instead.
+--- `done(img)` is called later if a site icon had to be downloaded first.
+local function iconFor(item, favicons, done)
   if item.icon then return hs.image.imageFromPath(expand(item.icon)) end
   if item.emoji then return nil end
   if item.bundleID then return hs.image.imageFromAppBundle(item.bundleID) end
@@ -67,6 +115,11 @@ local function iconFor(item)
     return p and hs.image.iconForFile(p) or nil
   end
   if item.path and not item.items then return hs.image.iconForFile(expand(item.path)) end
+  if item.url and favicons then
+    local p = siteIconPath(item.url)
+    if p and hs.fs.attributes(p) then return hs.image.imageFromPath(p) end
+    fetchSiteIcon(item.url, done)
+  end
 end
 
 local function emojiFor(item)
@@ -79,14 +132,14 @@ end
 
 local function labelFor(item)
   if item.name then return item.name end
-  if item.app then return item.app end
+  if item.app then return appName(item.app) end
   if item.url then return item.url:match("^%a+://([^/]+)") or item.url end
   if item.path then return item.path:match("([^/]+)/?$") or item.path end
   return item.shortcut or item.cmd or item.bundleID or "?"
 end
 
 local function runningApp(item)
-  if item.bundleID or item.app then return hs.application.get(item.bundleID or item.app) end
+  if item.bundleID or item.app then return hs.application.get(item.bundleID or appName(item.app)) end
 end
 
 -- ---------------------------------------------------------------- actions
@@ -156,7 +209,7 @@ function obj:_draw(items, cx, cy)
   for i, item in ipairs(items) do
     local dx, dy = geo.slot(i, n, mid)
     local x, y = c + dx - icon / 2, c + dy - icon / 2
-    local img = iconFor(item)
+    local img = iconFor(item, cfg.favicons)
     if img then
       els[#els + 1] = { type = "image", image = img, imageScaling = "scaleProportionally",
         frame = { x = x, y = y, w = icon, h = icon } }
@@ -261,6 +314,9 @@ function obj:_onKey(e)
     self._mode = (self._mode - 1 + (key == "]" and 1 or -1)) % n + 1
     self:_close()
     self:_show()
+  elseif key == "," then
+    self:_close()
+    self:openSettings()
   elseif key == "delete" then
     self:_back()
   elseif key == "h" or key == "q" then
@@ -321,22 +377,48 @@ end
 
 --- WheelLauncher:start(config)
 --- config: a table, or the path of a Lua file that returns a table
---- (the file is watched and reloaded when you save it).
+--- (the file is watched and reloaded when you save it). The settings page
+--- stores its changes next to it as wheel.json, which wins over the Lua file.
 function obj:start(config)
   self:stop()
+  self._arg = config
+  local jsonPath = expand("~/.hammerspoon/wheel.json")
   if type(config) == "string" then
     self._path = expand(config)
-    local ok, res = pcall(dofile, self._path)
-    if not ok or type(res) ~= "table" then
-      hs.alert.show("WheelLauncher: config error\n" .. tostring(res))
-      res = {}
+    jsonPath = (self._path:gsub("%.lua$", "")) .. ".json"
+    local res = {}
+    if hs.fs.attributes(self._path) then
+      local ok, r = pcall(dofile, self._path)
+      if ok and type(r) == "table" then
+        res = r
+      else
+        hs.alert.show("WheelLauncher: config error\n" .. tostring(r))
+      end
+      self._watch = hs.pathwatcher.new(self._path, function()
+        hs.timer.doAfter(0.3, function() self:start(self._path) end)
+      end):start()
     end
     config = res
-    self._watch = hs.pathwatcher.new(self._path, function()
-      hs.timer.doAfter(0.3, function() self:start(self._path) end)
-    end):start()
   end
   self.cfg = merge(DEFAULTS, config)
+  -- Whatever the settings page saved wins over the Lua file.
+  self._json = jsonPath
+  local saved = hs.fs.attributes(jsonPath) and hs.json.read(jsonPath)
+  if type(saved) == "table" then
+    for _, k in ipairs(SAVED) do
+      if saved[k] ~= nil then self.cfg[k] = saved[k] end
+    end
+  end
+  if self.cfg.menubar then
+    self._menu = hs.menubar.new()
+    if self._menu then
+      self._menu:setTitle("◎")
+      self._menu:setMenu({
+        { title = "Ayarlar…", fn = function() self:openSettings() end },
+        { title = "Yeniden yükle", fn = function() self:start(self._arg) end },
+      })
+    end
+  end
   self._mode, self._last, self._was, self._open = 1, 0, false, false
   local T = hs.eventtap.event.types
   self._keys = hs.eventtap.new({ T.keyDown }, function(e) return self:_onKey(e) end)
@@ -349,7 +431,10 @@ function obj:stop()
   for _, k in ipairs({ "_flags", "_keys", "_watch", "_pending" }) do
     if self[k] then self[k]:stop() self[k] = nil end
   end
+  if self._menu then self._menu:delete() self._menu = nil end
   return self
 end
+
+dofile(DIR .. "settings.lua")(obj, { dir = DIR, iconFor = iconFor, appPath = appPath, expand = expand })
 
 return obj
