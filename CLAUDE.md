@@ -18,6 +18,7 @@ A free radial launcher for macOS. No app of our own: a Hammerspoon Spoon (Lua 5.
 - Logic changes: test first in `tests/run.lua`. New math goes in `geometry.lua`, not `init.lua`.
 - New config keys: add to `DEFAULTS` in `init.lua`, to `wheel.example.lua`, to the README table, and (if user-editable) to `SAVED` + `settings.html`. Old configs must keep working.
 - Network: only site-icon download (`fetchSiteIcon`, off with `favicons = false`). No telemetry, no extra dependencies. MIT only.
+- `settings.html` is one self-contained file (no React, no CDN): branched menu, canvas light-tunnel background, rotating text, carousel slides, animated radios. Keep it dependency-free.
 - `settings.html` can be checked on Linux: open it with Playwright and call `WL.init({...})`.
 - Small commits. Tell the user what will be pushed before pushing. No force push.
 

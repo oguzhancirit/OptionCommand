@@ -33,6 +33,8 @@ Launchy hâlâ açıksa aynı tuşu o da yakalar; onu kapat.
 
 **Kolay yol — ayar sayfası:** menü çubuğundaki `◎` simgesi → **Ayarlar…** (ya da çark açıkken `,` tuşu). Buradan kısayol ekler, siler, sırasını değiştirir, alt çark kurar, boyutu ve açma tuşlarını seçersin. **Kaydet**'e basınca çark hemen güncellenir.
 
+Sayfanın tasarımı şu örneklerden esinlenip sıfırdan, düz HTML/CSS/JS ile yazıldı (onların kodu kullanılmadı): dallanan menü, ışık tüneli arka planı ve dönen yazı için [React Bits](https://reactbits.dev); kayan sayfalar ve yuvarlak seçim düğmeleri için [Animate UI](https://animate-ui.com).
+
 **Simgeler:**
 - Uygulama, klasör ve dosyaların simgesi kendiliğinden gelir.
 - Web sitelerinin simgesi (YouTube, ChatGPT…) ilk seferde indirilir ve `~/.hammerspoon/wheel-icons/` içinde saklanır.

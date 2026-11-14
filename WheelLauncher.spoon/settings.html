@@ -5,116 +5,213 @@
 <title>WheelLauncher</title>
 <style>
   :root {
-    --bg: #f4f2ef; --card: #ffffff; --line: #dedad4; --text: #1f1d1a; --dim: #77726a;
-    --accent: #e8703a; --accent-soft: rgba(232,112,58,.16); --ring: #2a2623; --hub: #3d3834;
-  }
-  @media (prefers-color-scheme: dark) {
-    :root { --bg: #1d1b19; --card: #292623; --line: #3d3935; --text: #f1eeea; --dim: #a39d94;
-      --accent-soft: rgba(232,112,58,.24); --ring: #100f0e; --hub: #2b2825; }
+    --bg: #0b0a10; --card: rgba(19,17,25,.66); --line: rgba(255,255,255,.14); --line-dim: #3f3f46;
+    --text: #f5f5f5; --dim: #a1a1aa; --accent: #e8703a; --accent-soft: rgba(232,112,58,.22);
+    --spring: cubic-bezier(.2,1.35,.4,1); --glide: cubic-bezier(.22,.9,.26,1.04);
   }
   * { box-sizing: border-box; }
-  body { margin: 0; background: var(--bg); color: var(--text);
+  html, body { height: 100%; }
+  body { margin: 0; background: var(--bg); color: var(--text); overflow: hidden;
     font: 13px/1.45 -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif; }
-  header { display: flex; align-items: center; gap: 12px; padding: 12px 18px;
-    border-bottom: 1px solid var(--line); position: sticky; top: 0; background: var(--bg); z-index: 2; }
-  header h1 { font-size: 15px; margin: 0; flex: 1; }
+  #tunnel { position: fixed; inset: 0; width: 100%; height: 100%; z-index: 0; }
+  #app { position: relative; z-index: 1; height: 100%; display: grid; grid-template-rows: auto 1fr; }
+
+  header { display: flex; align-items: center; gap: 12px; padding: 14px 20px; }
+  header h1 { font-size: 17px; margin: 0; flex: 1; display: flex; align-items: center; gap: 8px; font-weight: 650; }
   #status { color: var(--dim); }
-  main { display: grid; grid-template-columns: 380px 1fr; gap: 16px; padding: 16px 18px; }
-  @media (max-width: 760px) { main { grid-template-columns: 1fr; } }
-  .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 14px; }
-  .card + .card { margin-top: 14px; }
-  h2 { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--dim); margin: 0 0 10px; }
-  button, select, input[type=text] { font: inherit; color: inherit; }
-  button { background: var(--card); border: 1px solid var(--line); border-radius: 7px; padding: 5px 11px; cursor: pointer; }
-  button:hover { border-color: var(--accent); }
-  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
-  button.danger { color: #d0432f; }
-  button:disabled { opacity: .4; cursor: default; }
-  input[type=text], select { width: 100%; background: var(--bg); border: 1px solid var(--line);
-    border-radius: 7px; padding: 6px 9px; }
-  input[type=text]:focus, select:focus { outline: 2px solid var(--accent-soft); border-color: var(--accent); }
-  label.row { display: grid; grid-template-columns: 96px 1fr; align-items: center; gap: 10px; margin-bottom: 9px; }
-  label.row > span { color: var(--dim); }
+  button, input[type=text] { font: inherit; color: inherit; }
+  button { background: rgba(255,255,255,.06); border: 1px solid var(--line); border-radius: 8px; padding: 5px 11px; cursor: pointer; }
+  button:hover { border-color: rgba(255,255,255,.4); }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; padding: 6px 16px; }
+  button.danger { color: #ff7b66; }
+  button:disabled { opacity: .35; cursor: default; }
+  input[type=text] { width: 100%; background: rgba(0,0,0,.35); border: 1px solid var(--line); border-radius: 8px; padding: 6px 9px; }
+  input[type=text]:focus { outline: 2px solid var(--accent-soft); border-color: var(--accent); }
+  .hint { color: var(--dim); font-size: 12px; margin: 8px 0 0; }
+  h2 { font-size: 15px; margin: 0 0 12px; font-weight: 650; }
+  .field { margin-bottom: 10px; }
+  .field > span.cap { display: block; color: var(--dim); font-size: 11px; text-transform: uppercase; letter-spacing: .06em; margin-bottom: 5px; }
   .inline { display: flex; gap: 6px; align-items: center; }
   .inline input { flex: 1; min-width: 0; }
-  label.check { display: flex; gap: 8px; align-items: center; margin-bottom: 7px; }
-  .hint { color: var(--dim); font-size: 12px; margin: 8px 0 0; }
 
-  #crumb { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; min-height: 28px; }
-  #crumb b { flex: 1; }
-  #wheel { position: relative; width: 340px; height: 340px; margin: 0 auto; border-radius: 50%; background: var(--ring); }
-  #hub { position: absolute; inset: 90px; border-radius: 50%; background: var(--hub); color: #fff;
-    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; text-align: center; padding: 8px; }
-  #hubLabel { max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  #add { background: var(--accent); border: 0; color: #fff; border-radius: 16px; padding: 4px 12px; font-weight: 600; }
-  .slot { position: absolute; transform: translate(-50%, -50%); border: 2px solid transparent; border-radius: 14px;
-    background: transparent; padding: 0; display: flex; align-items: center; justify-content: center; line-height: 1; }
+  /* ---- rotating text: letters slide up one after another */
+  .rt { display: inline-grid; overflow: hidden; vertical-align: bottom; white-space: nowrap; }
+  .rt > span { grid-area: 1 / 1; display: inline-block; }
+  .rt .ch { display: inline-block; animation: rtIn .5s var(--spring) both; }
+  .rt .out .ch { animation: rtOut .32s ease-in both; }
+  @keyframes rtIn { from { transform: translateY(115%); opacity: 0; } to { transform: none; opacity: 1; } }
+  @keyframes rtOut { to { transform: translateY(-120%); opacity: 0; } }
+  .pill { background: var(--accent); border-radius: 8px; padding: 2px 9px; }
+
+  /* ---- layout */
+  main { display: grid; grid-template-columns: 250px 1fr; gap: 14px; padding: 0 20px 18px; min-height: 0; }
+  .glass { background: var(--card); border: 1px solid rgba(255,255,255,.08); border-radius: 14px;
+    -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px); }
+
+  /* ---- branched menu: a trunk, one branch per entry, a bright line traced to the pick */
+  #menu { padding: 16px 12px 16px 18px; overflow-y: auto; position: relative; z-index: 2; }
+  .sec { position: relative; border-left: 1px solid var(--line-dim); padding-left: 12px; padding-bottom: 6px; }
+  .sec-head { all: unset; cursor: pointer; display: block; font-weight: 600; font-size: 14px; padding: 4px 0; position: relative; width: 100%; }
+  .sec-head::before { content: ""; position: absolute; left: -13.5px; top: 5px; bottom: 5px; width: 2px; border-radius: 2px;
+    background: var(--text); transform: scaleY(0); transition: transform .35s var(--spring); }
+  .sec.has-active > .sec-head::before { transform: scaleY(1); }
+  .sec-body { display: grid; grid-template-rows: 1fr; transition: grid-template-rows .35s var(--glide); }
+  .sec.closed > .sec-body { grid-template-rows: 0fr; }
+  .sec-body > div { overflow: hidden; min-height: 0; }
+  .branches { position: relative; padding-left: 30px; margin-left: 8px; }
+  .branches > svg { position: absolute; left: 0; top: 0; width: 30px; height: 100%; overflow: visible; pointer-events: none; }
+  .branches path { fill: none; stroke: var(--line-dim); stroke-width: 1.2; }
+  .branches path.trace { stroke: var(--text); stroke-width: 1.6; stroke-dasharray: 1; stroke-dashoffset: 0; }
+  .branches path.trace.draw { animation: trace .5s ease-out both; }
+  @keyframes trace { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
+  .row { all: unset; cursor: pointer; display: flex; align-items: center; gap: 8px; height: 30px; width: 100%;
+    color: var(--dim); transition: color .2s, transform .25s var(--spring); }
+  .row:hover { color: #d4d4d8; transform: translateX(2px); }
+  .row.active, .row.on-path { color: var(--text); }
+  .row .ico { width: 16px; height: 16px; display: inline-flex; align-items: center; justify-content: center; font-size: 13px; flex: none; }
+  .row .ico img { width: 16px; height: 16px; object-fit: contain; }
+  .row .lbl { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .row.add { font-size: 12px; opacity: .8; }
+
+  /* ---- carousel: neighbours shrink and wait behind, dots stretch, counter slides */
+  #stage { display: grid; grid-template-rows: 1fr auto; min-height: 0; min-width: 0; }
+  #slides { position: relative; min-height: 0; overflow: hidden; border-radius: 14px; }
+  .slide { position: absolute; top: 0; bottom: 0; left: 12%; width: 76%; padding: 18px 20px; overflow-y: auto;
+    transition: transform .6s var(--glide), opacity .45s ease, filter .45s ease; will-change: transform; }
+  .slide:not(.current) { cursor: pointer; }
+  .slide:not(.current) > * { pointer-events: none; }
+  #bar { display: flex; align-items: center; justify-content: center; gap: 14px; padding-top: 12px; }
+  #bar button { border-radius: 50%; width: 28px; height: 28px; padding: 0; }
+  #dots { display: flex; gap: 6px; align-items: center; }
+  #dots i { display: block; height: 6px; width: 6px; border-radius: 3px; background: rgba(255,255,255,.3); cursor: pointer;
+    transition: width .45s var(--spring), background .3s; }
+  #dots i.on { width: 24px; background: var(--text); }
+  #counter { color: var(--dim); display: flex; gap: 4px; font-variant-numeric: tabular-nums; }
+  #counter .odo { display: inline-block; height: 1.45em; overflow: hidden; color: var(--text); }
+  #counter .odo span { display: block; transition: transform .5s var(--glide); }
+  #counter .odo b { display: block; font-weight: 600; height: 1.45em; }
+
+  /* ---- radio group: the dot pops in with a spring */
+  .radios { display: grid; gap: 7px; }
+  .radios.cols { grid-template-columns: 1fr 1fr; }
+  .radio { display: flex; align-items: center; gap: 9px; cursor: pointer; }
+  .radio input, .check input, .key input { position: absolute; opacity: 0; pointer-events: none; }
+  .radio .dot { width: 16px; height: 16px; border-radius: 50%; border: 1.5px solid rgba(255,255,255,.35); flex: none;
+    display: grid; place-items: center; transition: border-color .2s, background .2s; }
+  .radio .dot::after { content: ""; width: 8px; height: 8px; border-radius: 50%; background: #17151c; transform: scale(0); }
+  .radio input:checked + .dot { background: var(--text); border-color: var(--text); }
+  .radio input:checked + .dot::after { animation: pop .42s var(--spring) both; }
+  .radio input:focus-visible + .dot { box-shadow: 0 0 0 3px var(--accent-soft); }
+  .radio input:disabled ~ * { opacity: .4; }
+  .radio:active .dot { transform: scale(.88); }
+  @keyframes pop { from { transform: scale(0); } to { transform: scale(1); } }
+  .check { display: flex; align-items: center; gap: 9px; cursor: pointer; margin-bottom: 9px; }
+  .check .box { width: 16px; height: 16px; border-radius: 5px; border: 1.5px solid rgba(255,255,255,.35); flex: none;
+    display: grid; place-items: center; font-size: 11px; color: #17151c; transition: background .2s, border-color .2s; }
+  .check .box::after { content: "✓"; transform: scale(0); font-weight: 700; }
+  .check input:checked + .box { background: var(--text); border-color: var(--text); }
+  .check input:checked + .box::after { animation: pop .42s var(--spring) both; }
+  .keys { display: flex; gap: 8px; }
+  .key span { display: grid; place-items: center; width: 46px; height: 42px; border-radius: 9px; font-size: 18px; cursor: pointer;
+    border: 1px solid var(--line); background: rgba(255,255,255,.05); color: var(--dim);
+    transition: transform .3s var(--spring), background .2s, color .2s, border-color .2s; }
+  .key input:checked + span { background: var(--text); color: #17151c; border-color: var(--text); transform: translateY(2px) scale(.96); }
+
+  /* ---- shortcut slide */
+  #shortcut { display: grid; grid-template-columns: 250px 1fr; gap: 20px; align-items: start; }
+  #crumb { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; min-height: 28px; font-weight: 600; }
+  #wheel { position: relative; width: 250px; height: 250px; border-radius: 50%; background: rgba(0,0,0,.55); border: 1px solid rgba(255,255,255,.08); }
+  #hub { position: absolute; inset: 68px; border-radius: 50%; background: rgba(255,255,255,.09); display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 5px; text-align: center; font-size: 12px; }
+  #add { background: var(--accent); border: 0; color: #fff; border-radius: 14px; padding: 3px 10px; font-weight: 600; font-size: 12px; }
+  .slot { position: absolute; transform: translate(-50%, -50%); border: 2px solid transparent; border-radius: 12px; background: transparent;
+    padding: 0; display: flex; align-items: center; justify-content: center; line-height: 1;
+    transition: left .5s var(--glide), top .5s var(--glide), background .2s, border-color .2s; }
   .slot.on { border-color: var(--accent); background: var(--accent-soft); }
   .slot img { width: 82%; height: 82%; object-fit: contain; pointer-events: none; }
-  #empty { color: var(--dim); text-align: center; padding: 20px 0; }
-  .mods label { margin-right: 12px; }
+  #empty { color: var(--dim); padding: 30px 0; }
+  @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01s !important; transition-duration: .01s !important; } }
 </style>
 </head>
 <body>
+<canvas id="tunnel"></canvas>
+<div id="app">
 <header>
-  <h1>WheelLauncher ayarları</h1>
-  <span id="status"></span>
+  <h1>Çarkını <span class="pill"><span class="rt" id="headline"></span></span></h1>
+  <span id="status" class="rt"></span>
   <button class="primary" id="save">Kaydet</button>
 </header>
 <main>
-  <section>
-    <div class="card">
-      <div id="crumb"><button id="back" hidden>‹ Geri</button><b id="crumbText">Ana çark</b></div>
-      <div id="wheel">
-        <div id="hub"><span id="hubLabel"></span><button id="add">+ Ekle</button></div>
-      </div>
-      <p class="hint">Bir simgeye tıkla, sağdan düzenle. İlk öğe tepede durur, diğerleri saat yönünde dizilir.</p>
-    </div>
-  </section>
+  <nav id="menu" class="glass"></nav>
 
-  <section>
-    <div class="card" id="editor">
-      <h2>Seçili kısayol</h2>
-      <div id="empty">Soldan bir simge seç ya da “+ Ekle”ye bas.</div>
-      <div id="form" hidden>
-        <label class="row"><span>Tür</span><select id="type"></select></label>
-        <label class="row" id="valueRow"><span id="valueName">Değer</span>
-          <span class="inline"><input type="text" id="value" spellcheck="false"><button id="pick">Seç…</button></span></label>
-        <label class="row"><span>Ad</span><input type="text" id="name" placeholder="Boş bırakırsan kendisi bulur"></label>
-        <label class="row"><span>Emoji</span><input type="text" id="emoji" placeholder="Boş = simge kendiliğinden gelir" maxlength="8"></label>
-        <label class="row"><span>Resim</span>
-          <span class="inline"><input type="text" id="icon" placeholder="Kendi resmin (isteğe bağlı)" spellcheck="false">
-            <button id="pickIcon">Seç…</button></span></label>
-        <div class="inline" style="margin-top:12px">
-          <button id="left">◀ Öne al</button><button id="right">Sona doğru ▶</button>
-          <button id="open" hidden>İçini düzenle ›</button>
-          <span style="flex:1"></span><button class="danger" id="del">Sil</button>
+  <section id="stage">
+    <div id="slides">
+      <div class="slide glass" data-title="Kısayol">
+        <div id="shortcut">
+          <div>
+            <div id="crumb"><button id="back" hidden>‹</button><span id="crumbText" class="rt"></span></div>
+            <div id="wheel"><div id="hub"><span id="hubLabel" class="rt"></span><button id="add">+ Ekle</button></div></div>
+            <p class="hint">İlk öğe tepede durur, diğerleri saat yönünde dizilir.</p>
+          </div>
+          <div>
+            <div id="empty">Soldan bir kısayol seç ya da “+ Ekle”ye bas.</div>
+            <div id="form" hidden>
+              <div class="field"><span class="cap">Tür</span><div class="radios cols" id="type"></div></div>
+              <div class="field" id="valueRow"><span class="cap" id="valueName">Değer</span>
+                <span class="inline"><input type="text" id="value" spellcheck="false"><button id="pick">Seç…</button></span></div>
+              <div class="field"><span class="cap">Ad</span><input type="text" id="name" placeholder="Boş bırakırsan kendisi bulur"></div>
+              <div class="field"><span class="cap">Simge</span>
+                <span class="inline"><input type="text" id="emoji" placeholder="Emoji" maxlength="8" style="flex:0 0 76px">
+                  <input type="text" id="icon" placeholder="ya da kendi resmin" spellcheck="false"><button id="pickIcon">Seç…</button></span></div>
+              <div class="inline" style="margin-top:12px">
+                <button id="left" title="Öne al">◀</button><button id="right" title="Sona doğru">▶</button>
+                <button id="open" hidden>+ İçine ekle</button>
+                <span style="flex:1"></span><button class="danger" id="del">Sil</button>
+              </div>
+              <p class="hint" id="typeHint"></p>
+            </div>
+          </div>
         </div>
-        <p class="hint" id="typeHint"></p>
+      </div>
+
+      <div class="slide glass" data-title="Görünüm">
+        <h2>Görünüm</h2>
+        <div class="field"><span class="cap">Çark boyutu</span><div class="radios" id="size"></div></div>
+        <div class="field" style="margin-top:16px"><span class="cap">Çark nerede açılsın</span><div class="radios" id="centerOnMouse"></div></div>
+      </div>
+
+      <div class="slide glass" data-title="Açma tuşları">
+        <h2>Açma tuşları</h2>
+        <div class="field"><span class="cap">Hangi tuşlar</span><div class="keys">
+          <label class="key"><input type="checkbox" data-mod="cmd"><span>⌘</span></label>
+          <label class="key"><input type="checkbox" data-mod="alt"><span>⌥</span></label>
+          <label class="key"><input type="checkbox" data-mod="ctrl"><span>⌃</span></label>
+          <label class="key"><input type="checkbox" data-mod="shift"><span>⇧</span></label></div></div>
+        <div class="field" style="margin-top:16px"><span class="cap">Nasıl basılsın</span><div class="radios" id="doublePress"></div></div>
+        <p class="hint">“İki kez bas” seçeneği, ⌘⌥ ile başlayan diğer kısayollarla karışmayı önler.</p>
+      </div>
+
+      <div class="slide glass" data-title="Davranış">
+        <h2>Davranış</h2>
+        <label class="check"><input type="checkbox" id="hideOthers"><span class="box"></span>Uygulama açınca diğerlerini gizle</label>
+        <label class="check"><input type="checkbox" id="favicons"><span class="box"></span>Web sitelerinin simgesini kendiliğinden indir</label>
+        <p class="hint">Simge önce sitenin kendisinden, bulunamazsa Google’ın simge servisinden alınır ve Mac’inde saklanır.</p>
       </div>
     </div>
-
-    <div class="card">
-      <h2>Genel</h2>
-      <label class="row"><span>Çark boyutu</span><select id="size">
-        <option value="tiny">Çok küçük</option><option value="small">Küçük</option><option value="medium">Orta</option>
-        <option value="large">Büyük</option><option value="xlarge">Çok büyük</option></select></label>
-      <label class="row"><span>Açma tuşları</span><span class="mods">
-        <label><input type="checkbox" data-mod="cmd"> ⌘</label><label><input type="checkbox" data-mod="alt"> ⌥</label>
-        <label><input type="checkbox" data-mod="ctrl"> ⌃</label><label><input type="checkbox" data-mod="shift"> ⇧</label></span></label>
-      <label class="check"><input type="checkbox" id="doublePress"> İki kez bas, ikincisinde basılı tut (kapalıysa: sadece basılı tut)</label>
-      <label class="check"><input type="checkbox" id="centerOnMouse"> Çark imlecin olduğu yerde açılsın</label>
-      <label class="check"><input type="checkbox" id="hideOthers"> Uygulama açınca diğerlerini gizle</label>
-      <label class="check"><input type="checkbox" id="favicons"> Web sitelerinin simgesini kendiliğinden indir</label>
+    <div id="bar">
+      <button id="prev" aria-label="Önceki">‹</button>
+      <div id="dots"></div>
+      <div id="counter"><span class="odo"><span id="odo"></span></span><span>/ 4</span></div>
+      <button id="next" aria-label="Sonraki">›</button>
     </div>
   </section>
 </main>
+</div>
 
 <script>
 const $ = id => document.getElementById(id);
 const post = m => { try { window.webkit.messageHandlers.wheel.postMessage(m); } catch (e) {} };
-const TYPES = { app: 'Uygulama', url: 'Web sitesi', path: 'Klasör / dosya', shortcut: 'Mac Kısayolu',
-  cmd: 'Terminal komutu', group: 'Alt çark', other: 'Özel (dosyadan)' };
+const TYPES = { app: 'Uygulama', url: 'Web sitesi', path: 'Klasör / dosya', shortcut: 'Mac Kısayolu', cmd: 'Terminal komutu', group: 'Alt çark' };
 const FIELDS = ['app', 'url', 'path', 'shortcut', 'cmd'];
 const DEFAULT_EMOJI = { app: '❔', url: '🌐', path: '📄', shortcut: '⚡', cmd: '🖥', group: '📂', other: '✨' };
 const VALUE_NAME = { app: 'Uygulama', url: 'Adres', path: 'Konum', shortcut: 'Kısayol adı', cmd: 'Komut' };
@@ -127,11 +224,16 @@ const HINTS = {
   group: 'İçinde başka kısayollar olan ikinci bir çark. Kullanırken imleci dilimin dışına doğru it.',
   other: 'Bu öğe ayar dosyasından geliyor; burada sadece adı ve simgesi değişir.',
 };
+const SETTINGS = ['Görünüm', 'Açma tuşları', 'Davranış'];
+const SETTING_ICON = ['🎨', '⌨️', '⚙️'];
 
 let cfg = { items: [], trigger: ['cmd', 'alt'] };
-let stack = [];   // open sub-wheels (group items)
-let sel = -1;
-const icons = {}; // key -> data URL | false | 'wait'
+let stack = [];    // open sub-wheels (group items), outermost first
+let sel = -1;      // index inside list()
+let slide = 0;     // 0 = shortcut editor, 1..3 = settings pages
+let lastTrace = '';
+const icons = {};  // key -> data URL | false | 'wait'
+const closed = {}; // collapsed menu sections
 
 const arr = v => Array.isArray(v) ? v : [];
 const list = () => stack.length ? stack[stack.length - 1].items : cfg.items;
@@ -139,58 +241,178 @@ const typeOf = it => 'items' in it ? 'group' : (FIELDS.find(f => f in it) || 'ot
 const iconKey = it => JSON.stringify([typeOf(it), it[typeOf(it)] || '', it.icon || '', it.bundleID || '']);
 function labelOf(it) {
   if (it.name) return it.name;
-  const t = typeOf(it), v = it[t] || '';
-  if (t === 'url') return (v.match(/^\w+:\/\/([^\/]+)/) || [])[1] || v;
-  if (t === 'path' || t === 'app') return v.replace(/\.app\/?$/, '').replace(/\/$/, '').split('/').pop() || v;
+  const t = typeOf(it), v = typeof it[t] === 'string' ? it[t] : '';
+  if (t === 'url') return (v.match(/^\w+:\/\/([^\/]+)/) || [])[1] || v || 'Yeni site';
+  if (t === 'path' || t === 'app') return v.replace(/\.app\/?$/, '').replace(/\/$/, '').split('/').pop() || 'Yeni';
   if (t === 'group') return 'Alt çark';
   return v || '?';
 }
-function normalize(items) {
-  return arr(items).map(it => { if ('items' in it) it.items = normalize(it.items); return it; });
-}
+const normalize = items => arr(items).map(it => { if ('items' in it) it.items = normalize(it.items); return it; });
+const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
 
-function requestIcons() {
-  for (const it of list()) {
+// ---------------------------------------------------------------- rotating text
+function rotate(node, text) {
+  if (node.dataset.text === text) return;
+  node.dataset.text = text;
+  const old = node.querySelector(':scope > span:not(.out)');
+  if (old) { old.className = 'out'; [...old.children].forEach((c, i) => c.style.animationDelay = i * 12 + 'ms'); setTimeout(() => old.remove(), 420); }
+  const cur = el('span'), chars = [...text];
+  chars.forEach((ch, i) => { const c = el('span', 'ch', ch === ' ' ? ' ' : ch); c.style.animationDelay = (chars.length - 1 - i) * 22 + 'ms'; cur.append(c); });
+  node.append(cur);
+}
+const clip = (s, n) => [...s].length > n ? [...s].slice(0, n - 1).join('') + '…' : s;
+const WORDS = ['kişiselleştir', 'hızlandır', 'düzenle', 'sadeleştir'];
+let word = 0;
+rotate($('headline'), WORDS[0]);
+setInterval(() => rotate($('headline'), WORDS[++word % WORDS.length]), 2600);
+const setStatus = t => rotate($('status'), t);
+const dirty = () => setStatus('Kaydedilmedi');
+
+// ---------------------------------------------------------------- radio groups
+function radios(host, options, onChange) {
+  host.textContent = '';
+  for (const [value, label] of options) {
+    const l = el('label', 'radio'), i = el('input');
+    i.type = 'radio'; i.name = host.id; i.value = value;
+    i.onchange = () => onChange(value);
+    l.append(i, el('span', 'dot'), el('span', null, label));
+    host.append(l);
+  }
+}
+const setRadio = (host, value, disabled) => host.querySelectorAll('input').forEach(i => { i.checked = i.value === String(value); i.disabled = !!disabled; });
+
+// ---------------------------------------------------------------- icons
+function requestIcons(items = cfg.items) {
+  for (const it of items) {
     const k = iconKey(it), t = typeOf(it);
-    if (it.emoji || t === 'group' || k in icons) continue;
-    if (!it[t] && !it.icon && !it.bundleID) continue;
+    if (t === 'group') { requestIcons(it.items); continue; }
+    if (it.emoji || k in icons || (!it[t] && !it.icon && !it.bundleID)) continue;
     icons[k] = 'wait';
     post({ action: 'icon', key: k, item: it, favicons: cfg.favicons });
   }
 }
+function iconNode(it) {
+  const url = icons[iconKey(it)];
+  if (!it.emoji && typeof url === 'string' && url !== 'wait') { const img = el('img'); img.src = url; return img; }
+  return document.createTextNode(it.emoji || DEFAULT_EMOJI[typeOf(it)]);
+}
 
+// ---------------------------------------------------------------- branched menu
+function branchList(rows) { // rows: [{node, lit}] ; nodes may be followed by nested lists
+  const box = el('div', 'branches');
+  box.append(document.createElementNS('http://www.w3.org/2000/svg', 'svg'));
+  rows.forEach(r => { r.node.dataset.lit = r.lit ? 1 : ''; box.append(r.node); if (r.nested) box.append(r.nested); });
+  return box;
+}
+function drawBranches(animate) {
+  document.querySelectorAll('.branches').forEach(box => {
+    const svg = box.firstChild; svg.textContent = '';
+    for (const row of box.children) {
+      if (!row.classList.contains('row')) continue;
+      const y = row.offsetTop + row.offsetHeight / 2;
+      const p = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      p.setAttribute('d', `M1 0 V${y - 9} Q1 ${y} 10 ${y} H24`);
+      if (row.dataset.lit) { p.setAttribute('pathLength', 1); p.setAttribute('class', 'trace' + (animate ? ' draw' : '')); }
+      row.dataset.lit ? svg.append(p) : svg.prepend(p);
+    }
+  });
+}
+function itemRows(items, path) {
+  const rows = items.map((it, i) => {
+    const depth = path.length;
+    const here = slide === 0 && stack.length === depth && path.every((g, k) => g === stack[k]);
+    const active = here && i === sel;
+    const onPath = slide === 0 && stack[depth] === it && path.every((g, k) => g === stack[k]);
+    const b = el('button', 'row' + (active ? ' active' : '') + (onPath ? ' on-path' : ''));
+    const ico = el('span', 'ico'); ico.append(iconNode(it));
+    b.append(ico, el('span', 'lbl', labelOf(it)));
+    b.onclick = () => { stack = path.slice(); sel = i; slide = 0; render(); };
+    const r = { node: b, lit: active || onPath };
+    if (typeOf(it) === 'group' && (active || onPath)) r.nested = branchList(itemRows(it.items, [...path, it]));
+    return r;
+  });
+  const add = el('button', 'row add'); add.append(el('span', 'ico', '＋'), el('span', 'lbl', 'Yeni kısayol'));
+  add.onclick = () => { stack = path.slice(); addItem(); };
+  rows.push({ node: add });
+  return rows;
+}
+function section(id, title, rows, hasActive) {
+  const s = el('div', 'sec' + (closed[id] ? ' closed' : '') + (hasActive ? ' has-active' : ''));
+  const head = el('button', 'sec-head', title);
+  head.onclick = () => { closed[id] = !closed[id]; s.classList.toggle('closed'); };
+  const body = el('div', 'sec-body'), inner = el('div');
+  inner.append(branchList(rows)); body.append(inner); s.append(head, body);
+  return s;
+}
+function renderMenu() {
+  const menu = $('menu'), top = menu.scrollTop;
+  menu.textContent = '';
+  menu.append(section('items', 'Kısayollar', itemRows(cfg.items, []), slide === 0));
+  const rows = SETTINGS.map((name, i) => {
+    const b = el('button', 'row' + (slide === i + 1 ? ' active' : ''));
+    b.append(el('span', 'ico', SETTING_ICON[i]), el('span', 'lbl', name));
+    b.onclick = () => go(i + 1);
+    return { node: b, lit: slide === i + 1 };
+  });
+  menu.append(section('settings', 'Ayarlar', rows, slide > 0));
+  menu.scrollTop = top;
+  const key = slide + ':' + stack.map(g => g && labelOf(g)).join('/') + ':' + sel;
+  drawBranches(key !== lastTrace);
+  lastTrace = key;
+}
+
+// ---------------------------------------------------------------- carousel
+const slides = [...document.querySelectorAll('.slide')];
+function renderCarousel() {
+  slides.forEach((s, i) => {
+    const d = i - slide, a = Math.abs(d);
+    s.classList.toggle('current', d === 0);
+    s.style.transform = `translateX(${d * 56}%) scale(${1 - Math.min(a, 2) * 0.16})`;
+    s.style.opacity = a === 0 ? 1 : a === 1 ? 0.4 : 0;
+    s.style.zIndex = 10 - a;
+    s.style.filter = a ? 'blur(1.5px)' : 'none';
+    s.style.pointerEvents = a > 1 ? 'none' : 'auto';
+  });
+  [...$('dots').children].forEach((d, i) => d.classList.toggle('on', i === slide));
+  $('odo').style.transform = `translateY(${-slide * 1.45}em)`;
+  $('prev').disabled = slide === 0; $('next').disabled = slide === slides.length - 1;
+}
+function go(i) { slide = Math.max(0, Math.min(slides.length - 1, i)); renderMenu(); renderCarousel(); }
+slides.forEach((s, i) => {
+  s.addEventListener('click', () => { if (i !== slide) go(i); });
+  const d = el('i'); d.onclick = () => go(i); $('dots').append(d);
+  $('odo').append(el('b', null, i + 1));
+});
+$('prev').onclick = () => go(slide - 1);
+$('next').onclick = () => go(slide + 1);
+
+// ---------------------------------------------------------------- wheel preview + form
 function renderWheel() {
   const L = list(), wheel = $('wheel');
   wheel.querySelectorAll('.slot').forEach(e => e.remove());
-  const R = 130, size = Math.min(58, 2 * Math.PI * R / Math.max(L.length, 1) * 0.72);
+  const R = 95, size = Math.min(46, 2 * Math.PI * R / Math.max(L.length, 1) * 0.72);
   L.forEach((it, i) => {
     const a = i * 2 * Math.PI / L.length;
-    const b = document.createElement('button');
-    b.className = 'slot' + (i === sel ? ' on' : '');
-    b.style.cssText = `left:${170 + R * Math.sin(a)}px;top:${170 - R * Math.cos(a)}px;width:${size}px;height:${size}px;font-size:${size * 0.6}px`;
+    const b = el('button', 'slot' + (i === sel ? ' on' : ''));
+    b.style.cssText = `left:${125 + R * Math.sin(a)}px;top:${125 - R * Math.cos(a)}px;width:${size}px;height:${size}px;font-size:${size * 0.6}px`;
     b.title = labelOf(it);
-    const url = icons[iconKey(it)];
-    if (!it.emoji && typeof url === 'string' && url !== 'wait') {
-      const img = document.createElement('img'); img.src = url; b.append(img);
-    } else b.textContent = it.emoji || DEFAULT_EMOJI[typeOf(it)];
+    b.append(iconNode(it));
     b.onclick = () => { sel = i; render(); };
     wheel.append(b);
   });
-  $('hubLabel').textContent = sel >= 0 && L[sel] ? labelOf(L[sel]) : (L.length ? '' : 'Çark boş');
-  $('crumbText').textContent = ['Ana çark', ...stack.map(labelOf)].join(' › ');
+  rotate($('hubLabel'), clip(sel >= 0 && L[sel] ? labelOf(L[sel]) : (L.length ? 'Seç' : 'Çark boş'), 14));
+  rotate($('crumbText'), clip(stack.length ? labelOf(stack[stack.length - 1]) : 'Ana çark', 22));
   $('back').hidden = !stack.length;
 }
-
 function fillForm() {
   const it = list()[sel];
   $('form').hidden = !it; $('empty').hidden = !!it;
   if (!it) return;
   const t = typeOf(it);
-  $('type').value = t;
-  $('type').disabled = t === 'other';
+  setRadio($('type'), t, t === 'other');
   $('valueRow').hidden = t === 'group' || t === 'other';
   $('valueName').textContent = VALUE_NAME[t] || '';
-  $('value').value = it[t] && typeof it[t] === 'string' ? it[t] : '';
+  $('value').value = typeof it[t] === 'string' ? it[t] : '';
   $('pick').hidden = !(t === 'app' || t === 'path');
   $('name').value = it.name || '';
   $('emoji').value = it.emoji || '';
@@ -199,29 +421,28 @@ function fillForm() {
   $('typeHint').textContent = HINTS[t];
   $('left').disabled = sel === 0; $('right').disabled = sel === list().length - 1;
 }
-function render() { requestIcons(); renderWheel(); fillForm(); }
-function dirty() { $('status').textContent = 'Kaydedilmedi'; }
+function render() { requestIcons(); renderMenu(); renderWheel(); fillForm(); renderCarousel(); }
+function typed() { dirty(); renderMenu(); renderWheel(); }
 
 function setField(key, value) {
   const it = list()[sel]; if (!it) return;
   if (value) it[key] = value; else delete it[key];
-  dirty(); renderWheel();
+  typed();
 }
-$('value').oninput = e => { const it = list()[sel]; if (!it) return; it[typeOf(it)] = e.target.value.trim(); dirty(); renderWheel(); };
-$('value').onchange = () => { requestIcons(); };
+function addItem() { list().push({ url: 'https://' }); sel = list().length - 1; slide = 0; dirty(); render(); $('value').focus(); }
+$('value').oninput = e => { const it = list()[sel]; if (!it) return; it[typeOf(it)] = e.target.value.trim(); typed(); };
+$('value').onchange = () => requestIcons();
 $('name').oninput = e => setField('name', e.target.value.trim());
 $('emoji').oninput = e => setField('emoji', e.target.value.trim());
 $('icon').oninput = e => setField('icon', e.target.value.trim());
 $('icon').onchange = () => requestIcons();
-$('type').onchange = e => {
+radios($('type'), Object.entries(TYPES), t => {
   const it = list()[sel]; if (!it) return;
-  const old = typeOf(it), t = e.target.value;
-  if (t === 'other') { e.target.value = old; return; }
-  delete it[old]; delete it.browser;
+  delete it[typeOf(it)]; delete it.browser;
   if (t === 'group') it.items = []; else it[t] = '';
   dirty(); render();
-};
-$('add').onclick = () => { list().push({ url: 'https://' }); sel = list().length - 1; dirty(); render(); $('value').focus(); };
+});
+$('add').onclick = addItem;
 $('del').onclick = () => { list().splice(sel, 1); sel = Math.min(sel, list().length - 1); dirty(); render(); };
 function move(d) {
   const L = list(), j = sel + d; if (j < 0 || j >= L.length) return;
@@ -229,50 +450,104 @@ function move(d) {
 }
 $('left').onclick = () => move(-1);
 $('right').onclick = () => move(1);
-$('open').onclick = () => { stack.push(list()[sel]); sel = -1; render(); };
+$('open').onclick = () => { stack.push(list()[sel]); addItem(); };
 $('back').onclick = () => { const g = stack.pop(); sel = list().indexOf(g); render(); };
 $('pick').onclick = () => post({ action: 'pick', what: typeOf(list()[sel]) });
 $('pickIcon').onclick = () => post({ action: 'pick', what: 'icon' });
 
-for (const [k, v] of Object.entries(TYPES)) {
-  const o = document.createElement('option'); o.value = k; o.textContent = v; $('type').append(o);
-}
-for (const id of ['doublePress', 'centerOnMouse', 'hideOthers', 'favicons'])
-  $(id).onchange = e => { cfg[id] = e.target.checked; dirty(); if (id === 'favicons') render(); };
-$('size').onchange = e => { cfg.size = e.target.value; dirty(); };
+// ---------------------------------------------------------------- general settings
+radios($('size'), [['tiny', 'Çok küçük'], ['small', 'Küçük'], ['medium', 'Orta'], ['large', 'Büyük'], ['xlarge', 'Çok büyük']],
+  v => { cfg.size = v; dirty(); });
+radios($('centerOnMouse'), [['true', 'İmlecin olduğu yerde'], ['false', 'Ekranın ortasında']], v => { cfg.centerOnMouse = v === 'true'; dirty(); });
+radios($('doublePress'), [['true', 'İki kez bas, ikincisinde basılı tut'], ['false', 'Sadece basılı tut']], v => { cfg.doublePress = v === 'true'; dirty(); });
+for (const id of ['hideOthers', 'favicons']) $(id).onchange = e => { cfg[id] = e.target.checked; dirty(); if (id === 'favicons') render(); };
 document.querySelectorAll('[data-mod]').forEach(c => c.onchange = () => {
   cfg.trigger = [...document.querySelectorAll('[data-mod]')].filter(x => x.checked).map(x => x.dataset.mod);
   dirty();
 });
 
 function clean(items) { // drop half-filled rows before saving
-  return items.filter(it => { const t = typeOf(it); return t === 'group' || t === 'other' || it[t]; })
+  return items.filter(it => { const t = typeOf(it); return t === 'group' || t === 'other' || (it[t] && it[t] !== 'https://'); })
     .map(it => 'items' in it ? { ...it, items: clean(it.items) } : it);
 }
 $('save').onclick = () => {
-  if (!cfg.trigger.length) { $('status').textContent = 'En az bir açma tuşu seç'; return; }
-  $('status').textContent = 'Kaydediliyor…';
+  if (!cfg.trigger.length) { go(2); setStatus('En az bir açma tuşu seç'); return; }
+  setStatus('Kaydediliyor…');
   post({ action: 'save', cfg: { ...cfg, items: clean(cfg.items) } });
 };
 
 window.WL = {
   init(data) {
     cfg = data; cfg.items = normalize(cfg.items); cfg.trigger = arr(cfg.trigger);
-    stack = []; sel = cfg.items.length ? 0 : -1;
-    for (const id of ['doublePress', 'centerOnMouse', 'hideOthers', 'favicons']) $(id).checked = !!cfg[id];
-    $('size').value = cfg.size || 'medium';
+    stack = []; sel = cfg.items.length ? 0 : -1; slide = 0;
+    for (const id of ['hideOthers', 'favicons']) $(id).checked = !!cfg[id];
+    setRadio($('size'), cfg.size || 'medium');
+    setRadio($('centerOnMouse'), cfg.centerOnMouse !== false);
+    setRadio($('doublePress'), cfg.doublePress !== false);
     document.querySelectorAll('[data-mod]').forEach(c => c.checked = cfg.trigger.includes(c.dataset.mod));
-    $('status').textContent = '';
+    setStatus('');
     render();
   },
-  icon(key, url) { icons[key] = url; renderWheel(); },
+  icon(key, url) { icons[key] = url; renderMenu(); renderWheel(); },
   picked(what, value) {
     const it = list()[sel]; if (!it) return;
     if (what === 'icon') it.icon = value; else it[what] = value;
     dirty(); render();
   },
-  saved() { $('status').textContent = 'Kaydedildi ✓'; },
+  saved() { setStatus('Kaydedildi ✓'); },
 };
+
+// ---------------------------------------------------------------- light tunnel background
+// Fibre strands swirl into a far centre; comets of light race down them. The centre drifts toward the pointer.
+(function tunnel() {
+  const cv = $('tunnel'), ctx = cv.getContext('2d'), TAU = Math.PI * 2, N = 44;
+  const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const strands = Array.from({ length: N }, (_, i) => ({
+    a: i / N * TAU + Math.random() * 0.12, speed: 0.05 + Math.random() * 0.13, phase: Math.random(),
+    len: 0.16 + Math.random() * 0.26, glow: 0.35 + Math.random() * 0.65,
+  }));
+  let w = 0, h = 0, cx = 0, cy = 0, tx = 0.5, ty = 0.5, px = 0.5, py = 0.5, R = 0;
+  function size() {
+    const d = Math.min(devicePixelRatio || 1, 1.5);
+    w = innerWidth; h = innerHeight; cv.width = w * d; cv.height = h * d; ctx.setTransform(d, 0, 0, d, 0, 0);
+    R = Math.hypot(w, h) * 0.72;
+  }
+  function pt(s, u, t) { // u: 0 = deep centre, 1 = screen edge
+    const r = R * Math.pow(u, 1.7), ang = s.a + (1 - u) * 2.4 + t * 0.02;
+    return [cx + Math.cos(ang) * r, cy + Math.sin(ang) * r];
+  }
+  function frame(ms) {
+    const t = ms / 1000;
+    px += (tx - px) * 0.04; py += (ty - py) * 0.04;
+    cx = w * (0.5 + (px - 0.5) * 0.3); cy = h * (0.5 + (py - 0.5) * 0.3);
+    ctx.clearRect(0, 0, w, h);
+    ctx.lineCap = 'round';
+    for (const s of strands) {
+      ctx.beginPath();
+      for (let k = 0; k <= 26; k++) { const [x, y] = pt(s, 0.05 + 0.95 * k / 26, t); k ? ctx.lineTo(x, y) : ctx.moveTo(x, y); }
+      ctx.strokeStyle = 'rgba(255,255,255,0.1)'; ctx.lineWidth = 1; ctx.stroke();
+      const head = 1.15 - ((t * s.speed + s.phase) % 1) * 1.25; // travels from the edge into depth
+      for (let k = 0; k < 14; k++) {
+        const u0 = head + s.len * k / 14, u1 = head + s.len * (k + 1) / 14;
+        if (u1 < 0.03 || u0 > 1.05) continue;
+        const f = 1 - k / 14, depth = Math.max(0, Math.min(1, u0));
+        const [x0, y0] = pt(s, Math.max(u0, 0.03), t), [x1, y1] = pt(s, u1, t);
+        ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1);
+        ctx.strokeStyle = `rgba(255,244,236,${0.16 * f * s.glow})`; ctx.lineWidth = 3 + 12 * depth; ctx.stroke();
+        ctx.strokeStyle = `rgba(255,255,255,${0.95 * f * s.glow})`; ctx.lineWidth = 0.8 + 3 * depth; ctx.stroke();
+      }
+    }
+    const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, R * 0.3);
+    g.addColorStop(0, 'rgba(11,10,16,0.95)'); g.addColorStop(1, 'rgba(11,10,16,0)');
+    ctx.fillStyle = g; ctx.fillRect(0, 0, w, h);
+    if (!still && !document.hidden) requestAnimationFrame(frame);
+  }
+  addEventListener('resize', size);
+  addEventListener('pointermove', e => { tx = e.clientX / w; ty = e.clientY / h; });
+  document.addEventListener('visibilitychange', () => { if (!document.hidden && !still) requestAnimationFrame(frame); });
+  size(); requestAnimationFrame(frame);
+})();
+
 post({ action: 'ready' });
 </script>
 </body>
