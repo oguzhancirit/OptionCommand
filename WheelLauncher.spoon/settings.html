@@ -44,7 +44,7 @@
   .pill { background: var(--accent); border-radius: 8px; padding: 2px 9px; }
 
   /* ---- layout */
-  main { display: grid; grid-template-columns: 220px 1fr; gap: 14px; padding: 0 20px 18px; min-height: 0; }
+  main { display: grid; grid-template-columns: 220px 1fr; gap: 14px; padding: 0 20px 18px; min-height: 0; align-items: center; }
   .glass { background: var(--card); border: 1px solid rgba(255,255,255,.08); border-radius: 14px;
     -webkit-backdrop-filter: blur(5px); backdrop-filter: blur(5px); }
 
@@ -74,9 +74,9 @@
   .row.add { font-size: 12px; opacity: .8; }
 
   /* ---- carousel: neighbours shrink and wait behind, dots stretch, counter slides */
-  #stage { display: grid; grid-template-rows: 1fr auto; min-height: 0; min-width: 0; }
+  #stage { display: grid; grid-template-rows: auto auto; min-height: 0; min-width: 0; }
   #slides { position: relative; min-height: 0; overflow: hidden; border-radius: 14px; }
-  .slide { position: absolute; top: 0; bottom: 0; left: 4%; width: 92%; container-type: inline-size; padding: 18px 20px; overflow-y: auto;
+  .slide { position: absolute; top: 0; left: 4%; width: 92%; container-type: inline-size; padding: 18px 20px; overflow-y: auto;
     transition: transform .6s var(--glide), opacity .45s ease, filter .45s ease; will-change: transform; }
   .slide:not(.current) { cursor: pointer; }
   .slide:not(.current) > * { pointer-events: none; }
@@ -435,7 +435,17 @@ function renderCarousel() {
   $('odo').style.transform = `translateY(${-slide * 1.45}em)`;
   $('prev').disabled = slide === 0; $('next').disabled = slide === slides.length - 1;
 }
-function go(i) { slide = Math.max(0, Math.min(slides.length - 1, i)); renderMenu(); renderCarousel(); }
+function fit() {
+  const menu = $('menu'), cur = slides[slide], box = $('slides');
+  menu.style.height = 'auto'; cur.style.height = 'auto';
+  const need = Math.max(menu.offsetHeight, cur.offsetHeight);
+  const room = document.querySelector('main').clientHeight - 18 - 40; // main bottom padding, carousel bar
+  const h = Math.max(160, Math.min(need, room));
+  menu.style.height = h + 'px'; box.style.height = h + 'px';
+  slides.forEach(s => s.style.height = h + 'px');
+}
+addEventListener('resize', fit);
+function go(i) { slide = Math.max(0, Math.min(slides.length - 1, i)); renderMenu(); renderCarousel(); fit(); }
 slides.forEach((s, i) => {
   s.addEventListener('click', () => { if (i !== slide) go(i); });
   const d = el('i'); d.onclick = () => go(i); $('dots').append(d);
@@ -481,7 +491,7 @@ function fillForm() {
   $('typeHint').textContent = HINTS[t];
   $('left').disabled = sel === 0; $('right').disabled = sel === list().length - 1;
 }
-function render() { requestIcons(); renderMenu(); renderWheel(); fillForm(); renderCarousel(); }
+function render() { requestIcons(); renderMenu(); renderWheel(); fillForm(); renderCarousel(); fit(); }
 function typed() { dirty(); renderMenu(); renderWheel(); }
 
 function setField(key, value) {

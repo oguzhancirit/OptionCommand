@@ -49,7 +49,7 @@ return function(obj, H)
       if not ok then hs.alert.show("WheelLauncher: " .. tostring(err)) end
     end)
     local f = hs.screen.mainScreen():frame()
-    local w, h = 1060, 720
+    local w, h = 1060, 620
     local wv = hs.webview.new({ x = f.x + (f.w - w) / 2, y = f.y + (f.h - h) / 2, w = w, h = h }, {}, uc)
     wv:windowStyle({ "titled", "closable", "resizable" })
     wv:windowTitle("WheelLauncher")
