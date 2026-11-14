@@ -5,7 +5,7 @@
 <title>WheelLauncher</title>
 <style>
   :root {
-    --bg: #0b0a10; --card: rgba(19,17,25,.66); --line: rgba(255,255,255,.14); --line-dim: #3f3f46;
+    --bg: #0b0a10; --card: rgba(19,17,25,.4); --line: rgba(255,255,255,.14); --line-dim: #3f3f46;
     --text: #f5f5f5; --dim: #a1a1aa; --accent: #e8703a; --accent-soft: rgba(232,112,58,.22);
     --spring: cubic-bezier(.2,1.35,.4,1); --glide: cubic-bezier(.22,.9,.26,1.04);
   }
@@ -46,10 +46,10 @@
   /* ---- layout */
   main { display: grid; grid-template-columns: 220px 1fr; gap: 14px; padding: 0 20px 18px; min-height: 0; }
   .glass { background: var(--card); border: 1px solid rgba(255,255,255,.08); border-radius: 14px;
-    -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px); }
+    -webkit-backdrop-filter: blur(5px); backdrop-filter: blur(5px); }
 
   /* ---- branched menu: a trunk, one branch per entry, a bright line traced to the pick */
-  #menu { padding: 16px 12px 16px 18px; overflow-y: auto; position: relative; z-index: 2; }
+  #menu { padding: 16px 12px 16px 18px; overflow-y: auto; position: relative; z-index: 2; margin-bottom: 40px; }
   .sec { position: relative; border-left: 1px solid var(--line-dim); padding-left: 12px; padding-bottom: 6px; }
   .sec-head { all: unset; cursor: pointer; display: block; font-weight: 600; font-size: 14px; padding: 4px 0; position: relative; width: 100%; }
   .sec-head::before { content: ""; position: absolute; left: -13.5px; top: 5px; bottom: 5px; width: 2px; border-radius: 2px;
@@ -80,7 +80,7 @@
     transition: transform .6s var(--glide), opacity .45s ease, filter .45s ease; will-change: transform; }
   .slide:not(.current) { cursor: pointer; }
   .slide:not(.current) > * { pointer-events: none; }
-  #bar { display: flex; align-items: center; justify-content: center; gap: 14px; padding-top: 12px; }
+  #bar { display: flex; align-items: center; justify-content: center; gap: 14px; height: 40px; padding-top: 12px; }
   #bar button { border-radius: 50%; width: 28px; height: 28px; padding: 0; }
   #dots { display: flex; gap: 6px; align-items: center; }
   #dots i { display: block; height: 6px; width: 6px; border-radius: 3px; background: rgba(255,255,255,.3); cursor: pointer;
@@ -426,7 +426,7 @@ function renderCarousel() {
     const d = i - slide, a = Math.abs(d);
     s.classList.toggle('current', d === 0);
     s.style.transform = `translateX(${d * 60}%) scale(${1 - Math.min(a, 2) * 0.16})`;
-    s.style.opacity = a === 0 ? 1 : a === 1 ? 0.4 : 0;
+    s.style.opacity = a === 0 ? 1 : 0; // neighbours only show while sliding: the glass is see-through now
     s.style.zIndex = 10 - a;
     s.style.filter = a ? 'blur(1.5px)' : 'none';
     s.style.pointerEvents = a > 1 ? 'none' : 'auto';
