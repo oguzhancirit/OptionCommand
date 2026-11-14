@@ -76,7 +76,7 @@
   /* ---- carousel: neighbours shrink and wait behind, dots stretch, counter slides */
   #stage { display: grid; grid-template-rows: 1fr auto; min-height: 0; min-width: 0; }
   #slides { position: relative; min-height: 0; overflow: hidden; border-radius: 14px; }
-  .slide { position: absolute; top: 0; bottom: 0; left: 12%; width: 76%; padding: 18px 20px; overflow-y: auto;
+  .slide { position: absolute; top: 0; bottom: 0; left: 7%; width: 86%; container-type: inline-size; padding: 18px 20px; overflow-y: auto;
     transition: transform .6s var(--glide), opacity .45s ease, filter .45s ease; will-change: transform; }
   .slide:not(.current) { cursor: pointer; }
   .slide:not(.current) > * { pointer-events: none; }
@@ -93,7 +93,11 @@
 
   /* ---- radio group: the dot pops in with a spring */
   .radios { display: grid; gap: 7px; }
-  .radios.cols { grid-template-columns: 1fr 1fr; }
+  .radios.chips { grid-template-columns: repeat(auto-fill, minmax(146px, 1fr)); gap: 6px; }
+  .radios.chips .radio { border: 1px solid var(--line); border-radius: 9px; padding: 7px 9px; gap: 7px; white-space: nowrap;
+    transition: border-color .2s, background .2s; }
+  .radios.chips .radio:has(input:checked) { border-color: rgba(255,255,255,.55); background: rgba(255,255,255,.07); }
+  .radios.chips .radio .em { font-size: 14px; }
   .radio { display: flex; align-items: center; gap: 9px; cursor: pointer; }
   .radio input, .check input, .key input { position: absolute; opacity: 0; pointer-events: none; }
   .radio .dot { width: 16px; height: 16px; border-radius: 50%; border: 1.5px solid rgba(255,255,255,.35); flex: none;
@@ -118,10 +122,17 @@
   .key input:checked + span { background: var(--text); color: #17151c; border-color: var(--text); transform: translateY(2px) scale(.96); }
 
   /* ---- shortcut slide */
-  #shortcut { display: grid; grid-template-columns: 250px 1fr; gap: 20px; align-items: start; }
+  #shortcut { display: grid; grid-template-columns: minmax(180px, 240px) minmax(0, 1fr); gap: 22px; align-items: start; }
+  #wheelCol { display: grid; justify-items: center; min-width: 0; }
+  #wheelCol #crumb { justify-self: stretch; }
+  #wheelCol .hint { text-align: center; max-width: 240px; }
+  @container (max-width: 560px) {
+    #shortcut { grid-template-columns: minmax(0, 1fr); gap: 14px; }
+    #wheel { max-width: 210px; }
+  }
   #crumb { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; min-height: 28px; font-weight: 600; }
-  #wheel { position: relative; width: 250px; height: 250px; border-radius: 50%; background: rgba(0,0,0,.55); border: 1px solid rgba(255,255,255,.08); }
-  #hub { position: absolute; inset: 68px; border-radius: 50%; background: rgba(255,255,255,.09); display: flex; flex-direction: column;
+  #wheel { position: relative; width: 100%; max-width: 240px; aspect-ratio: 1; border-radius: 50%; background: rgba(0,0,0,.55); border: 1px solid rgba(255,255,255,.08); }
+  #hub { position: absolute; inset: 27%; padding: 4px; border-radius: 50%; background: rgba(255,255,255,.09); display: flex; flex-direction: column;
     align-items: center; justify-content: center; gap: 5px; text-align: center; font-size: 12px; }
   #add { background: var(--accent); border: 0; color: #fff; border-radius: 14px; padding: 3px 10px; font-weight: 600; font-size: 12px; }
   .slot { position: absolute; transform: translate(-50%, -50%); border: 2px solid transparent; border-radius: 12px; background: transparent;
@@ -174,23 +185,23 @@
     <div id="slides">
       <div class="slide glass" data-title="Kısayol">
         <div id="shortcut">
-          <div>
-            <div id="crumb"><button id="back" hidden>‹</button><span id="crumbText" class="rt"></span></div>
+          <div id="wheelCol">
+            <div id="crumb" style="min-width:0"><button id="back" hidden>‹</button><span id="crumbText" class="rt"></span></div>
             <div id="wheel"><div id="hub"><span id="hubLabel" class="rt"></span><button id="add">+ Ekle</button></div></div>
             <p class="hint">İlk öğe tepede durur, diğerleri saat yönünde dizilir.</p>
           </div>
           <div>
             <div id="empty">Soldan bir kısayol seç ya da “+ Ekle”ye bas.</div>
             <div id="form" hidden>
-              <div class="field"><span class="cap">Tür</span><div class="radios cols" id="type"></div></div>
+              <div class="field"><span class="cap">Tür</span><div class="radios chips" id="type"></div></div>
               <div class="field" id="valueRow"><span class="cap" id="valueName">Değer</span>
                 <span class="inline"><input type="text" id="value" spellcheck="false"><button id="pick">Seç…</button></span></div>
-              <div class="field"><span class="cap">Ad</span><input type="text" id="name" placeholder="Boş bırakırsan kendisi bulur"></div>
+              <div class="field"><span class="cap">Ad</span><input type="text" id="name" placeholder="Otomatik"></div>
               <div class="field"><span class="cap">Simge</span>
                 <div class="inline"><button class="iconbtn" id="iconBtn" title="Simgeyi değiştir"></button>
                   <div><div id="iconWhat"></div><div class="hint" style="margin:2px 0 0">Değiştirmek için simgeye tıkla</div></div></div></div>
               <div class="inline" style="margin-top:12px">
-                <button id="left" title="Öne al">◀</button><button id="right" title="Sona doğru">▶</button>
+                <button id="left" title="Çarkta öne al">◀ Öne</button><button id="right" title="Çarkta sona doğru">Sona ▶</button>
                 <button id="open" hidden>+ İçine ekle</button>
                 <span style="flex:1"></span><button class="danger" id="del">Sil</button>
               </div>
@@ -251,7 +262,7 @@
 <script>
 const $ = id => document.getElementById(id);
 const post = m => { try { window.webkit.messageHandlers.wheel.postMessage(m); } catch (e) {} };
-const TYPES = { app: 'Uygulama', url: 'Web sitesi', path: 'Klasör / dosya', shortcut: 'Mac Kısayolu', cmd: 'Terminal komutu', group: 'Alt çark' };
+const TYPES = { app: '🧩 Uygulama', url: '🌐 Web sitesi', path: '📁 Klasör/dosya', shortcut: '⚡ Mac Kısayolu', cmd: '🖥 Komut', group: '📂 Alt çark' };
 const FIELDS = ['app', 'url', 'path', 'shortcut', 'cmd'];
 const DEFAULT_EMOJI = { app: '❔', url: '🌐', path: '📄', shortcut: '⚡', cmd: '🖥', group: '📂', other: '✨' };
 const PLACEHOLDER = { app: 'Google Chrome', url: 'chatgpt.com', path: '~/Downloads', shortcut: 'Odak Modu', cmd: 'pmset displaysleepnow' };
@@ -329,7 +340,10 @@ function radios(host, options, onChange) {
     const l = el('label', 'radio'), i = el('input');
     i.type = 'radio'; i.name = host.id; i.value = value;
     i.onchange = () => onChange(value);
-    l.append(i, el('span', 'dot'), el('span', null, label));
+    const m = label.match(/^(\S+) (.+)$/), chip = host.classList.contains('chips') && m;
+    l.append(i, el('span', 'dot'));
+    if (chip) l.append(el('span', 'em', m[1]));
+    l.append(el('span', null, chip ? m[2] : label));
     host.append(l);
   }
 }
@@ -421,7 +435,7 @@ function renderCarousel() {
   slides.forEach((s, i) => {
     const d = i - slide, a = Math.abs(d);
     s.classList.toggle('current', d === 0);
-    s.style.transform = `translateX(${d * 56}%) scale(${1 - Math.min(a, 2) * 0.16})`;
+    s.style.transform = `translateX(${d * 60}%) scale(${1 - Math.min(a, 2) * 0.16})`;
     s.style.opacity = a === 0 ? 1 : a === 1 ? 0.4 : 0;
     s.style.zIndex = 10 - a;
     s.style.filter = a ? 'blur(1.5px)' : 'none';
@@ -444,20 +458,21 @@ $('next').onclick = () => go(slide + 1);
 function renderWheel() {
   const L = list(), wheel = $('wheel');
   wheel.querySelectorAll('.slot').forEach(e => e.remove());
-  const R = 95, size = Math.min(46, 2 * Math.PI * R / Math.max(L.length, 1) * 0.72);
+  const W = wheel.offsetWidth || 240, R = W * 0.38, size = Math.min(W * 0.19, 2 * Math.PI * R / Math.max(L.length, 1) * 0.72);
   L.forEach((it, i) => {
     const a = i * 2 * Math.PI / L.length;
     const b = el('button', 'slot' + (i === sel ? ' on' : ''));
-    b.style.cssText = `left:${125 + R * Math.sin(a)}px;top:${125 - R * Math.cos(a)}px;width:${size}px;height:${size}px;font-size:${size * 0.6}px`;
+    b.style.cssText = `left:${50 + 38 * Math.sin(a)}%;top:${50 - 38 * Math.cos(a)}%;width:${size}px;height:${size}px;font-size:${size * 0.6}px`;
     b.title = labelOf(it);
     b.append(iconNode(it));
     b.onclick = () => { if (sel === i) openPicker(); else { sel = i; render(); } };
     wheel.append(b);
   });
-  rotate($('hubLabel'), clip(sel >= 0 && L[sel] ? labelOf(L[sel]) : (L.length ? 'Seç' : 'Çark boş'), 14));
+  rotate($('hubLabel'), clip(sel >= 0 && L[sel] ? labelOf(L[sel]) : (L.length ? 'Seç' : 'Çark boş'), W < 220 ? 11 : 14));
   rotate($('crumbText'), clip(stack.length ? labelOf(stack[stack.length - 1]) : 'Ana çark', 22));
   $('back').hidden = !stack.length;
 }
+new ResizeObserver(() => renderWheel()).observe($('wheel'));
 function fillForm() {
   const it = list()[sel];
   $('form').hidden = !it; $('empty').hidden = !!it;
