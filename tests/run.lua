@@ -58,7 +58,13 @@ eq(util.urlOpen("https://chatgpt.com", tabs), true, "plain host")
 eq(util.urlOpen("gmail.com", {}), false, "no tabs")
 eq(util.filePath("file:///Users/me/My%20Files/"), "/Users/me/My Files", "file url decoded")
 eq(util.filePath("file:///"), "/", "root kept")
-local t2, p2 = util.parseProbe("U\thttps://a.com/x\nP\tfile:///Users/me/Downloads/\njunk\n")
+local t2, p2, r2 = util.parseProbe("U\tcom.google.Chrome\thttps://a.com/x\nP\tfile:///Users/me/Downloads/\njunk\n")
+eq(t2[1].app, "com.google.Chrome", "probe tab browser")
+eq(r2[1], "file:///Users/me/Downloads/", "probe keeps raw folder url")
+local both = { { url = "https://a.com/1", app = "com.apple.Safari" }, { url = "https://a.com/2", app = "com.brave.Browser" } }
+eq(util.findTab("a.com", both).app, "com.apple.Safari", "first matching tab")
+eq(util.findTab("a.com", both, "com.brave.Browser").url, "https://a.com/2", "preferred browser first")
+eq(util.findTab("b.com", both), nil, "no tab")
 eq(#t2, 1, "probe tabs")
 eq(p2[1], "/Users/me/Downloads", "probe paths")
 eq(util.pathOpen("/Users/me/Downloads/", p2), true, "folder open")
@@ -83,6 +89,19 @@ end
 hs.application.get = function() return nil end
 hs.application.runningApplications = function() return {} end
 hs.application.launchOrFocus = function(name) ran[#ran + 1] = name end
+-- hs.task: finishes at once. Probe answers probeOut, focus answers focusOut.
+local tasks, probeOut, focusOut = {}, "", "no"
+hs.task.new = function(path, cb, args)
+  local t = { args = args }
+  function t:start()
+    tasks[#tasks + 1] = self
+    local isFocus = args and args[5] ~= nil
+    if cb then cb(0, isFocus and focusOut or probeOut) end
+    return self
+  end
+  return t
+end
+hs.open = function(p) ran[#ran + 1] = "open:" .. p end
 hs.urlevent.openURL = function(u) ran[#ran + 1] = u end
 hs.timer.secondsSinceEpoch = function() return 1000 end
 hs.keycodes.map = { [53] = "escape", [18] = "1", [0] = "a", [43] = "," }
@@ -192,6 +211,52 @@ eq(canvas[wl._dots[1]].action, "skip", "closed app has no dot")
 eq(canvas[wl._dots[3]].action, "skip", "group with nothing open")
 key(53)
 wl._probe = nil
+
+-- open tab: focus it instead of opening a second one
+local runs = #ran
+probeOut, focusOut = "U\tcom.brave.Browser\thttps://www.github.com/me\n", "ok"
+local function pickRight() -- open at the centre, point at slot 2 (github), release
+  mouse.x, mouse.y = 500, 500
+  flags(none) open()
+  mouse.x = 620
+  wl:_tick()
+  flags(none)
+  mouse.x = 500
+end
+pickRight()
+eq(#ran, runs, "open tab: no new page")
+eq(tasks[#tasks].args[5], "com.brave.Browser", "focus asks the right browser")
+eq(tasks[#tasks].args[6], "https://www.github.com/me", "focus asks the exact tab")
+focusOut = "no" -- tab closed in the meantime
+pickRight()
+eq(ran[#ran], "https://github.com", "closed meanwhile: new page")
+probeOut = "" -- nothing open
+table.remove(ran)
+pickRight()
+eq(ran[#ran], "https://github.com", "not open: new page")
+-- released before the browsers answered: wait, then decide
+wl._probe = nil
+focusOut = "ok"
+wl._probeTask = {}
+wl:_run({ url = "github.com" })
+eq(wl._afterProbe ~= nil, true, "run waits for the probe")
+local before = #ran
+wl:_probeDone(0, "U\tcom.apple.Safari\thttps://github.com/\n")
+eq(#ran, before, "probe found the tab: focused, not opened")
+eq(tasks[#tasks].args[5], "com.apple.Safari", "focus after waiting")
+-- folders
+local home = os.getenv("HOME")
+probeOut, focusOut = "P\tfile://" .. home .. "/Downloads/\n", "ok"
+wl._probe = nil
+wl:_probeOpen({ { path = "~/Downloads" } })
+before = #ran
+wl:_run({ path = "~/Downloads" })
+eq(#ran, before, "open folder: focused")
+eq(tasks[#tasks].args[5], "com.apple.finder", "focus Finder")
+wl:_run({ path = "~/Desktop" })
+eq(ran[#ran], "open:" .. home .. "/Desktop", "closed folder: opened")
+probeOut, focusOut = "", "no"
+mouse.x, mouse.y = 500, 500
 
 -- settings page
 open()

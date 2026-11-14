@@ -48,19 +48,27 @@ local function splitURL(u)
   return host, (path:gsub("/+$", ""))
 end
 
---- Is the site `item` (a URL the user saved) shown by any of the open tab URLs?
+--- First open tab that shows the site `item` (a URL the user saved), or nil.
 --- Same host (or a subdomain of it, www ignored); if the saved URL has a path,
---- the tab must be on that path or below it.
-function M.urlOpen(item, tabs)
+--- the tab must be on that path or below it. `tabs` holds URL strings or {url=, app=} tables.
+--- `prefer` (a browser bundle id) is searched first.
+function M.findTab(item, tabs, prefer)
   local h, p = splitURL(item)
-  if not h or h == "" then return false end
+  if not h or h == "" then return nil end
+  local hit
   for _, t in ipairs(tabs or {}) do
-    local th, tp = splitURL(t)
-    if th and (th == h or th:sub(-#h - 1) == "." .. h) then
-      if p == "" or tp == p or tp:sub(1, #p + 1) == p .. "/" then return true end
+    local th, tp = splitURL(type(t) == "table" and t.url or t)
+    if th and (th == h or th:sub(-#h - 1) == "." .. h)
+      and (p == "" or tp == p or tp:sub(1, #p + 1) == p .. "/") then
+      if not prefer or (type(t) == "table" and t.app == prefer) then return t end
+      hit = hit or t
     end
   end
-  return false
+  return hit
+end
+
+function M.urlOpen(item, tabs)
+  return M.findTab(item, tabs) ~= nil
 end
 
 --- "file:///Users/me/My%20Files/" -> "/Users/me/My Files"
@@ -71,25 +79,35 @@ function M.filePath(u)
   return (#p > 1 and p:gsub("/+$", "") or p)
 end
 
---- Is the folder `path` (already expanded) open in one of the Finder windows?
-function M.pathOpen(path, paths)
-  if type(path) ~= "string" then return false end
+--- Index of the Finder window showing folder `path` (already expanded), or nil.
+function M.findPath(path, paths)
+  if type(path) ~= "string" then return nil end
   local want = #path > 1 and path:gsub("/+$", "") or path
-  for _, q in ipairs(paths or {}) do
-    if q == want then return true end
+  for i, q in ipairs(paths or {}) do
+    if q == want then return i end
   end
-  return false
+  return nil
 end
 
---- Parse the probe output: lines "U<TAB>url" (browser tab) and "P<TAB>file-url" (Finder window).
+function M.pathOpen(path, paths)
+  return M.findPath(path, paths) ~= nil
+end
+
+--- Parse the probe output: lines "U<TAB>bundle-id<TAB>url" (browser tab) and
+--- "P<TAB>file-url" (Finder window). Returns tabs {url=, app=}, folder paths, and their raw file URLs.
 function M.parseProbe(text)
-  local tabs, paths = {}, {}
+  local tabs, paths, raw = {}, {}, {}
   for line in (text or ""):gmatch("[^\r\n]+") do
     local k, v = line:match("^(%u)\t(.+)$")
-    if k == "U" then tabs[#tabs + 1] = v
-    elseif k == "P" then paths[#paths + 1] = M.filePath(v) end
+    if k == "U" then
+      local app, url = v:match("^([^\t]+)\t(.+)$")
+      if app then tabs[#tabs + 1] = { url = url, app = app } end
+    elseif k == "P" then
+      paths[#paths + 1] = M.filePath(v)
+      raw[#raw + 1] = v
+    end
   end
-  return tabs, paths
+  return tabs, paths, raw
 end
 
 return M

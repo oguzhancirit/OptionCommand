@@ -149,7 +149,7 @@ function run() {
   ids.forEach(function (id) {
     try {
       var a = Application(id); if (!a.running()) return;
-      a.windows().forEach(function (w) { try { w.tabs.url().forEach(function (u) { if (u) out.push('U\t' + u); }); } catch (e) {} });
+      a.windows().forEach(function (w) { try { w.tabs.url().forEach(function (u) { if (u) out.push('U\t' + id + '\t' + u); }); } catch (e) {} });
     } catch (e) {}
   });
   try {
@@ -157,6 +157,39 @@ function run() {
     if (f.running()) f.finderWindows().forEach(function (w) { try { out.push('P\t' + w.target.url()); } catch (e) {} });
   } catch (e) {}
   return out.join('\n');
+}
+]]
+
+-- Brings one exact tab (or Finder window) to the front. argv: bundle id, exact URL.
+-- Prints "ok", or "no" when it is gone (then a new page is opened instead).
+local FOCUS = [[
+function run(argv) {
+  var id = argv[0], url = argv[1];
+  try {
+    var a = Application(id); if (!a.running()) return 'no';
+    if (id === 'com.apple.finder') {
+      var fw = a.finderWindows();
+      for (var i = 0; i < fw.length; i++) {
+        try { if (fw[i].target.url() === url) { fw[i].index = 1; a.activate(); return 'ok'; } } catch (e) {}
+      }
+      return 'no';
+    }
+    var ws = a.windows();
+    for (var i = 0; i < ws.length; i++) {
+      var urls; try { urls = ws[i].tabs.url(); } catch (e) { continue; }
+      for (var j = 0; j < urls.length; j++) {
+        if (urls[j] !== url) continue;
+        var w = ws[i], t = w.tabs[j];
+        if (id === 'com.apple.Safari') w.currentTab = t;
+        else if (id === 'company.thebrowser.Browser') t.select();
+        else w.activeTabIndex = j + 1;
+        try { w.minimized = false; } catch (e) {}
+        w.index = 1; a.activate();
+        return 'ok';
+      }
+    }
+  } catch (e) {}
+  return 'no';
 }
 ]]
 
@@ -180,9 +213,19 @@ function obj:_run(item)
     elseif item.app then hs.application.launchOrFocus(item.app)
     elseif item.url then
       local url = util.normalizeURL(item.url)
-      if item.browser then hs.urlevent.openURLWithBundle(url, item.browser)
-      else hs.urlevent.openURL(url) end
-    elseif item.path then hs.open(expand(item.path))
+      local function open()
+        if item.browser then hs.urlevent.openURLWithBundle(url, item.browser)
+        else hs.urlevent.openURL(url) end
+      end
+      if self:_waitForProbe(item) then return end
+      local tab = self._probe and util.findTab(url, self._probe.tabs, item.browser)
+      if tab then self:_focus(tab.app, tab.url, open) else open() end
+    elseif item.path then
+      local p = expand(item.path)
+      if self:_waitForProbe(item) then return end
+      local i = self._probe and util.findPath(p, self._probe.paths)
+      if i then self:_focus("com.apple.finder", self._probe.raw[i], function() hs.open(p) end)
+      else hs.open(p) end
     elseif item.shortcut then hs.shortcuts.run(item.shortcut)
     elseif item.cmd then hs.task.new("/bin/zsh", nil, { "-lc", item.cmd }):start()
     elseif item.keys then hs.eventtap.keyStroke(item.keys[1], item.keys[2])
@@ -289,14 +332,36 @@ end
 --- Ask the browsers and Finder what is open, then update the dots (the last answer is drawn meanwhile).
 function obj:_probeOpen(items)
   if not self.cfg.openDots or self._probeTask or not needsProbe(items) then return end
-  self._probeTask = hs.task.new("/usr/bin/osascript", function(code, out)
-    self._probeTask = nil
-    if code ~= 0 then return end
-    local tabs, paths = util.parseProbe(out)
-    self._probe = { tabs = tabs, paths = paths }
-    if self._open then self:_refreshDots() end
-  end, { "-l", "JavaScript", "-e", PROBE })
+  self._probeTask = hs.task.new("/usr/bin/osascript", function(code, out) self:_probeDone(code, out) end,
+    { "-l", "JavaScript", "-e", PROBE })
   self._probeTask:start()
+end
+
+function obj:_probeDone(code, out)
+  self._probeTask = nil
+  if code == 0 then
+    local tabs, paths, raw = util.parseProbe(out)
+    self._probe = { tabs = tabs, paths = paths, raw = raw }
+    if self._open then self:_refreshDots() end
+  end
+  local after = self._afterProbe
+  self._afterProbe = nil
+  if after then after() end
+end
+
+--- The wheel was released before the browsers answered: run the item once they do,
+--- so an open tab is reused instead of a second one being opened.
+function obj:_waitForProbe(item)
+  if not self._probeTask then return false end
+  self._afterProbe = function() self:_run(item) end
+  return true
+end
+
+--- Bring an open tab / Finder window to the front; `fallback` runs if it has closed meanwhile.
+function obj:_focus(app, url, fallback)
+  hs.task.new("/usr/bin/osascript", function(code, out)
+    if code ~= 0 or not tostring(out):match("ok") then fallback() end
+  end, { "-l", "JavaScript", "-e", FOCUS, app, url }):start()
 end
 
 function obj:_select(idx)

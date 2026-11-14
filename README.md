@@ -84,7 +84,7 @@ Her öğeye `name`, `emoji` veya `icon = "~/resim.png"` eklenebilir. Web sitesin
 | `H` / `Q` | Seçili uygulamayı gizle / kapat |
 | `,` | Ayar sayfasını aç |
 
-Açık olan şeyin simgesinin altında küçük beyaz nokta görünür: çalışan uygulama, tarayıcıda açık sekmesi olan site (Safari, Chrome, Brave, Edge, Arc, Vivaldi, Opera), Finder'da açık klasör, içinde açık bir şey olan alt çark. Siteler ve klasörler için macOS ilk seferde "Hammerspoon, Chrome'u denetlemek istiyor" diye izin sorar; izin vermezsen sadece o tarayıcı için nokta çıkmaz. İstemezsen `openDots = false`.
+Açık olan şeyin simgesinin altında küçük beyaz nokta görünür: çalışan uygulama, tarayıcıda açık sekmesi olan site (Safari, Chrome, Brave, Edge, Arc, Vivaldi, Opera), Finder'da açık klasör, içinde açık bir şey olan alt çark. Siteler ve klasörler için macOS ilk seferde "Hammerspoon, Chrome'u denetlemek istiyor" diye izin sorar; izin vermezsen sadece o tarayıcı için nokta çıkmaz. Noktalı (açık) bir site ya da klasörü seçersen yeni sayfa açılmaz, açık olan sekmeye / pencereye geçilir; açık değilse yeni açılır. İstemezsen `openDots = false` (o zaman her seferinde yeni sayfa açılır).
 
 ## Benzerleriyle karşılaştırma
 

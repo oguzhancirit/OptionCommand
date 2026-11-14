@@ -19,6 +19,7 @@ A free radial launcher for macOS. No app of our own: a Hammerspoon Spoon (Lua 5.
 - Logic changes: test first in `tests/run.lua`. New math goes in `geometry.lua`, not `init.lua`.
 - New config keys: add to `DEFAULTS` in `init.lua`, to `wheel.example.lua`, to the README table, and (if user-editable) to `SAVED` + `settings.html`. Old configs must keep working.
 - Open dots: `_probeOpen` runs one JXA `osascript` (browser tabs + Finder windows) when the wheel opens; matching rules in `util.lua` (`urlOpen`, `pathOpen`). Off with `openDots = false`.
+- Reuse: `_run` for url/path focuses the open tab / Finder window (`_focus`, JXA `FOCUS`, exact URL) and falls back to opening; if the probe is still running it waits (`_waitForProbe`).
 - Network: only site-icon download (`fetchSiteIcon`, off with `favicons = false`). No telemetry, no extra dependencies. MIT only.
 - Icons in `settings.html`: built-in emoji library (`EMOJI`, Turkish search words) in a picker popup; no emoji download.
 - `settings.html` is one self-contained file (no React, no CDN): branched menu, canvas light-tunnel background, rotating text, carousel slides, animated radios. Keep it dependency-free.
