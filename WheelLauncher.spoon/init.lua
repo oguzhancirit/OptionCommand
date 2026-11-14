@@ -11,6 +11,7 @@ obj.license = "MIT - https://opensource.org/licenses/MIT"
 
 local DIR = hs.spoons.resourcePath("")
 local geo = dofile(DIR .. "geometry.lua")
+local util = dofile(DIR .. "util.lua")
 
 local SIZES = { tiny = 0.6, small = 0.8, medium = 1, large = 1.25, xlarge = 1.5 }
 local MODS = { "cmd", "alt", "ctrl", "shift" }
@@ -150,8 +151,9 @@ function obj:_run(item)
     elseif item.bundleID then hs.application.launchOrFocusByBundleID(item.bundleID)
     elseif item.app then hs.application.launchOrFocus(item.app)
     elseif item.url then
-      if item.browser then hs.urlevent.openURLWithBundle(item.url, item.browser)
-      else hs.urlevent.openURL(item.url) end
+      local url = util.normalizeURL(item.url)
+      if item.browser then hs.urlevent.openURLWithBundle(url, item.browser)
+      else hs.urlevent.openURL(url) end
     elseif item.path then hs.open(expand(item.path))
     elseif item.shortcut then hs.shortcuts.run(item.shortcut)
     elseif item.cmd then hs.task.new("/bin/zsh", nil, { "-lc", item.cmd }):start()
@@ -409,6 +411,7 @@ function obj:start(config)
       if saved[k] ~= nil then self.cfg[k] = saved[k] end
     end
   end
+  util.fixItems(self.cfg.items)
   if self.cfg.menubar then
     self._menu = hs.menubar.new()
     if self._menu then

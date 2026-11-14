@@ -38,7 +38,8 @@ Sayfanın tasarımı şu örneklerden esinlenip sıfırdan, düz HTML/CSS/JS ile
 **Simgeler:**
 - Uygulama, klasör ve dosyaların simgesi kendiliğinden gelir.
 - Web sitelerinin simgesi (YouTube, ChatGPT…) ilk seferde indirilir ve `~/.hammerspoon/wheel-icons/` içinde saklanır.
-- İstersen her öğeye kendi resmini (`Resim → Seç…`) ya da bir emoji koyabilirsin.
+- Simgeyi değiştirmek için ayar sayfasında simgeye tıkla: içinde arama olan bir emoji kütüphanesi açılır (ör. "video", "yapay zeka", "müzik"). Oradan bilgisayarındaki bir resmi de seçebilir ya da "Otomatik simge" ile başa dönebilirsin.
+- Web sitesi eklerken sadece adını yazman yeterli (`chatgpt.com`); `https://` kendiliğinden eklenir.
 
 **Gizlilik:** Tek internet bağlantısı site simgesi indirmektir: önce sitenin kendisinden, bulunamazsa Google'ın simge servisinden (sadece site adı gider). İstemezsen ayar sayfasından kapat ya da `favicons = false` yaz.
 

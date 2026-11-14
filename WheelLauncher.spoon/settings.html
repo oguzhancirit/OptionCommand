@@ -130,6 +130,32 @@
   .slot.on { border-color: var(--accent); background: var(--accent-soft); }
   .slot img { width: 82%; height: 82%; object-fit: contain; pointer-events: none; }
   #empty { color: var(--dim); padding: 30px 0; }
+  /* ---- icon button + emoji picker */
+  .iconbtn { width: 52px; height: 52px; border-radius: 13px; font-size: 28px; padding: 0; display: grid; place-items: center; flex: none;
+    transition: transform .3s var(--spring), border-color .2s; }
+  .iconbtn:hover { transform: scale(1.06); border-color: var(--accent); }
+  .iconbtn img { width: 34px; height: 34px; object-fit: contain; }
+  #iconWhat { font-weight: 600; }
+  #picker { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; background: rgba(5,4,8,.55);
+    opacity: 0; pointer-events: none; transition: opacity .2s; }
+  #picker.open { opacity: 1; pointer-events: auto; }
+  #pickerCard { width: min(560px, calc(100% - 32px)); max-height: min(560px, calc(100% - 32px)); display: grid; grid-template-rows: auto auto auto 1fr auto;
+    gap: 10px; padding: 16px; transform: scale(.92) translateY(10px); transition: transform .4s var(--spring); }
+  #picker.open #pickerCard { transform: none; }
+  #pickerHead { display: flex; align-items: center; gap: 10px; }
+  #pickerHead h2 { margin: 0; flex: 1; }
+  #pickerHead .iconbtn { width: 40px; height: 40px; font-size: 22px; }
+  #cats { display: flex; gap: 4px; overflow-x: auto; padding-bottom: 2px; scrollbar-width: none; }
+  #cats button { border: 0; background: transparent; color: var(--dim); white-space: nowrap; border-radius: 7px; padding: 4px 9px; position: relative; }
+  #cats button.on { color: var(--text); background: rgba(255,255,255,.1); }
+  #grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(40px, 1fr)); gap: 4px; overflow-y: auto; min-height: 0; align-content: start; padding: 2px; }
+  #grid button { height: 40px; font-size: 23px; padding: 0; border: 1px solid transparent; background: transparent; border-radius: 9px;
+    transition: transform .25s var(--spring), background .15s; animation: popIn .32s var(--spring) both; }
+  #grid button:hover { background: rgba(255,255,255,.1); transform: scale(1.18); }
+  #grid button.on { background: var(--accent-soft); border-color: var(--accent); }
+  @keyframes popIn { from { transform: scale(.4); opacity: 0; } to { transform: none; opacity: 1; } }
+  #gridEmpty { color: var(--dim); padding: 18px 4px; }
+  #pickerFoot { display: flex; gap: 8px; align-items: center; }
   @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01s !important; transition-duration: .01s !important; } }
 </style>
 </head>
@@ -161,8 +187,8 @@
                 <span class="inline"><input type="text" id="value" spellcheck="false"><button id="pick">Seç…</button></span></div>
               <div class="field"><span class="cap">Ad</span><input type="text" id="name" placeholder="Boş bırakırsan kendisi bulur"></div>
               <div class="field"><span class="cap">Simge</span>
-                <span class="inline"><input type="text" id="emoji" placeholder="Emoji" maxlength="8" style="flex:0 0 76px">
-                  <input type="text" id="icon" placeholder="ya da kendi resmin" spellcheck="false"><button id="pickIcon">Seç…</button></span></div>
+                <div class="inline"><button class="iconbtn" id="iconBtn" title="Simgeyi değiştir"></button>
+                  <div><div id="iconWhat"></div><div class="hint" style="margin:2px 0 0">Değiştirmek için simgeye tıkla</div></div></div></div>
               <div class="inline" style="margin-top:12px">
                 <button id="left" title="Öne al">◀</button><button id="right" title="Sona doğru">▶</button>
                 <button id="open" hidden>+ İçine ekle</button>
@@ -208,16 +234,31 @@
 </main>
 </div>
 
+<div id="picker" aria-hidden="true">
+  <div id="pickerCard" class="glass" role="dialog" aria-label="Simge seç">
+    <div id="pickerHead"><span class="iconbtn" id="pickerNow"></span><h2>Simge seç</h2><button id="pickerClose" aria-label="Kapat">✕</button></div>
+    <input type="text" id="search" placeholder="Ara: video, müzik, kod, mail, yapay zeka…" spellcheck="false">
+    <div id="cats"></div>
+    <div id="grid"></div>
+    <div id="pickerFoot">
+      <button id="auto">↺ Otomatik simge</button>
+      <span style="flex:1"></span>
+      <button id="pickIcon">Bilgisayardan resim…</button>
+    </div>
+  </div>
+</div>
+
 <script>
 const $ = id => document.getElementById(id);
 const post = m => { try { window.webkit.messageHandlers.wheel.postMessage(m); } catch (e) {} };
 const TYPES = { app: 'Uygulama', url: 'Web sitesi', path: 'Klasör / dosya', shortcut: 'Mac Kısayolu', cmd: 'Terminal komutu', group: 'Alt çark' };
 const FIELDS = ['app', 'url', 'path', 'shortcut', 'cmd'];
 const DEFAULT_EMOJI = { app: '❔', url: '🌐', path: '📄', shortcut: '⚡', cmd: '🖥', group: '📂', other: '✨' };
+const PLACEHOLDER = { app: 'Google Chrome', url: 'chatgpt.com', path: '~/Downloads', shortcut: 'Odak Modu', cmd: 'pmset displaysleepnow' };
 const VALUE_NAME = { app: 'Uygulama', url: 'Adres', path: 'Konum', shortcut: 'Kısayol adı', cmd: 'Komut' };
 const HINTS = {
   app: 'Uygulamanın simgesi kendiliğinden gelir.',
-  url: 'Sitenin simgesi (YouTube, ChatGPT…) kendiliğinden indirilir. Adres https:// ile başlamalı.',
+  url: 'Sadece site adını yazman yeterli (ör. chatgpt.com). Simgesi kendiliğinden indirilir; istersen simgeye tıklayıp emoji seç.',
   path: 'Bir klasör ya da dosya. Simgesi kendiliğinden gelir.',
   shortcut: 'Mac’teki “Kısayollar” uygulamasında yazan adın aynısı.',
   cmd: 'Terminal’e yazdığın bir komut.',
@@ -236,6 +277,19 @@ const icons = {};  // key -> data URL | false | 'wait'
 const closed = {}; // collapsed menu sections
 
 const arr = v => Array.isArray(v) ? v : [];
+// Same rules as util.lua normalizeURL: "chatgpt.com" -> https://chatgpt.com, "https://https://x" -> https://x
+function normalizeURL(u) {
+  u = (u || '').trim(); if (!u) return u;
+  let scheme = null, rest = u, m;
+  while ((m = rest.match(/^(https?):?\/+(.*)$/i) || rest.match(/^(https?):(.*)$/i))) { scheme = scheme || m[1].toLowerCase(); rest = m[2]; }
+  if (!scheme) {
+    if (/^[a-z][\w+.-]*:\/\//i.test(rest)) return rest;
+    const sc = (rest.match(/^([a-z][\w+.-]*):/i) || [])[1];
+    if (sc && (/^(mailto|tel|sms|facetime|facetime-audio|maps)$/i.test(sc) || /^x-apple/i.test(sc))) return rest;
+    scheme = 'https';
+  }
+  return rest ? scheme + '://' + rest : '';
+}
 const list = () => stack.length ? stack[stack.length - 1].items : cfg.items;
 const typeOf = it => 'items' in it ? 'group' : (FIELDS.find(f => f in it) || 'other');
 const iconKey = it => JSON.stringify([typeOf(it), it[typeOf(it)] || '', it.icon || '', it.bundleID || '']);
@@ -397,7 +451,7 @@ function renderWheel() {
     b.style.cssText = `left:${125 + R * Math.sin(a)}px;top:${125 - R * Math.cos(a)}px;width:${size}px;height:${size}px;font-size:${size * 0.6}px`;
     b.title = labelOf(it);
     b.append(iconNode(it));
-    b.onclick = () => { sel = i; render(); };
+    b.onclick = () => { if (sel === i) openPicker(); else { sel = i; render(); } };
     wheel.append(b);
   });
   rotate($('hubLabel'), clip(sel >= 0 && L[sel] ? labelOf(L[sel]) : (L.length ? 'Seç' : 'Çark boş'), 14));
@@ -412,11 +466,12 @@ function fillForm() {
   setRadio($('type'), t, t === 'other');
   $('valueRow').hidden = t === 'group' || t === 'other';
   $('valueName').textContent = VALUE_NAME[t] || '';
+  $('value').placeholder = PLACEHOLDER[t] || '';
   $('value').value = typeof it[t] === 'string' ? it[t] : '';
   $('pick').hidden = !(t === 'app' || t === 'path');
   $('name').value = it.name || '';
-  $('emoji').value = it.emoji || '';
-  $('icon').value = it.icon || '';
+  const ib = $('iconBtn'); ib.textContent = ''; ib.append(iconNode(it));
+  $('iconWhat').textContent = it.emoji ? 'Emoji' : it.icon ? 'Kendi resmin' : 'Otomatik';
   $('open').hidden = t !== 'group';
   $('typeHint').textContent = HINTS[t];
   $('left').disabled = sel === 0; $('right').disabled = sel === list().length - 1;
@@ -429,13 +484,15 @@ function setField(key, value) {
   if (value) it[key] = value; else delete it[key];
   typed();
 }
-function addItem() { list().push({ url: 'https://' }); sel = list().length - 1; slide = 0; dirty(); render(); $('value').focus(); }
+function addItem() { list().push({ url: '' }); sel = list().length - 1; slide = 0; dirty(); render(); $('value').focus(); }
+$('value').placeholder = '';
 $('value').oninput = e => { const it = list()[sel]; if (!it) return; it[typeOf(it)] = e.target.value.trim(); typed(); };
-$('value').onchange = () => requestIcons();
+$('value').onchange = e => {
+  const it = list()[sel]; if (!it) return;
+  if (typeOf(it) === 'url') { it.url = normalizeURL(it.url); e.target.value = it.url; typed(); }
+  requestIcons();
+};
 $('name').oninput = e => setField('name', e.target.value.trim());
-$('emoji').oninput = e => setField('emoji', e.target.value.trim());
-$('icon').oninput = e => setField('icon', e.target.value.trim());
-$('icon').onchange = () => requestIcons();
 radios($('type'), Object.entries(TYPES), t => {
   const it = list()[sel]; if (!it) return;
   delete it[typeOf(it)]; delete it.browser;
@@ -455,6 +512,53 @@ $('back').onclick = () => { const g = stack.pop(); sel = list().indexOf(g); rend
 $('pick').onclick = () => post({ action: 'pick', what: typeOf(list()[sel]) });
 $('pickIcon').onclick = () => post({ action: 'pick', what: 'icon' });
 
+// ---------------------------------------------------------------- emoji picker
+// A small built-in library: emoji + Turkish/English search words. No download needed.
+const EMOJI = {
+  'Popüler': '🌐 web site internet|🔍 ara arama search google|🤖 yapay zeka ai gpt chatgpt bot|✨ yapay zeka ai sihir claude|🧠 beyin ai düşün|💬 sohbet chat mesaj|▶️ video youtube oynat play|📺 tv dizi netflix|🎵 müzik spotify music|🎧 kulaklık podcast müzik|📧 mail e-posta gmail|✉️ mail mektup posta|📅 takvim calendar|🗓 takvim plan|📝 not notes yaz|📁 klasör folder|📂 klasör aç folder|💻 bilgisayar laptop kod|⚙️ ayar settings|⭐ yıldız favori|❤️ kalp sevgi favori|🔥 ateş popüler trend|🚀 roket başlat hızlı|🏠 ev home',
+  'İş & okul': '💼 iş çanta work|📊 grafik rapor tablo|📈 grafik artış borsa|📉 düşüş grafik|🧾 fatura fiş|📋 pano liste|✅ yapılacak tamam todo|☑️ görev check|📌 iğne sabitle|📎 ataç ek|🗂 dosyalar arşiv|🗃 arşiv kutu|🖇 ataç|✏️ kalem yaz|🖊 kalem imza|📐 cetvel ölçü|📏 cetvel|📚 kitap ders okul|📖 kitap oku|🎓 okul mezun eğitim|🏫 okul|🧮 hesap makine|🔖 yer imi bookmark|🗒 not defter|📇 kartvizit kişi|☎️ telefon|📞 telefon ara|🖨 yazıcı|🏢 ofis şirket|🤝 toplantı anlaşma|⏰ alarm saat|⏱ zamanlayıcı pomodoro|⌛ zaman kum|🗣 konuşma sunum',
+  'Kod & teknik': '👨‍💻 yazılımcı kod|👩‍💻 yazılımcı kod|🧑‍💻 kod developer|🐙 github git|🐛 hata bug|🔧 araç tamir|🛠 araçlar tools|🔩 vida|⚡ hızlı kısayol enerji|🔌 fiş eklenti plugin|🧩 eklenti parça puzzle|🖥 terminal ekran masaüstü|⌨️ klavye|🖱 fare mouse|💾 kaydet disk|💿 cd disk|🗄 sunucu server|☁️ bulut cloud|🔒 kilit güvenlik şifre|🔑 anahtar şifre password|🛡 güvenlik kalkan|📡 anten sinyal|🛰 uydu|🧪 test deney|🔬 mikroskop araştırma|📦 paket npm kutu|🐳 docker balina|🐍 python yılan|☕ java kahve|🦀 rust|🌲 ağaç tree|🔗 bağlantı link url|📶 wifi sinyal|🔋 pil batarya|🧬 dna bilim',
+  'Medya & eğlence': '🎬 film sinema|🎥 kamera video|📷 fotoğraf kamera|📸 fotoğraf instagram|🖼 resim görsel|🎨 tasarım boya figma|🎮 oyun game|🕹 oyun atari|👾 oyun uzaylı|🎲 zar oyun|♟ satranç chess|🎤 mikrofon şarkı|🎙 podcast mikrofon kayıt|🎹 piyano|🎸 gitar|🥁 davul|📻 radyo|📰 haber gazete news|🗞 haber|📱 telefon mobil|💡 fikir ampul|🎁 hediye|🎉 kutlama parti|🏆 kupa ödül|⚽ futbol spor|🏀 basketbol|🎾 tenis|🏋️ spor gym|🧘 meditasyon yoga|🚴 bisiklet|🏃 koşu|🍿 patlamış mısır film',
+  'Sosyal & alışveriş': '🐦 twitter kuş x|💼 linkedin iş|📘 facebook kitap|📷 instagram|👻 snapchat hayalet|💭 düşünce|👥 kişiler grup|👤 kişi profil|🙋 merhaba|👋 el selam|📣 duyuru|🔔 bildirim zil|🛒 alışveriş sepet market|🛍 alışveriş poşet|💳 kart banka ödeme|💰 para|💵 para dolar|🏦 banka|🪙 bozuk para kripto|📮 posta kargo|🚚 kargo teslimat|✈️ uçak seyahat uçuş|🏨 otel|🗺 harita map|📍 konum yer|🧭 pusula yön|🌍 dünya|🍕 pizza yemek|🍔 hamburger yemek|☕ kahve|🍎 elma',
+  'Semboller': '❗ önemli ünlem|❓ soru|ℹ️ bilgi info|⚠️ uyarı|✔️ tamam|❌ iptal kapat|➕ ekle artı|➖ çıkar|🔴 kırmızı|🟠 turuncu|🟡 sarı|🟢 yeşil|🔵 mavi|🟣 mor|⚫ siyah|⚪ beyaz|🔶 elmas turuncu|🔷 elmas mavi|💎 elmas mücevher|🌙 ay gece karanlık|☀️ güneş gündüz|🌈 gökkuşağı|❄️ kar soğuk|🌊 dalga deniz|🌸 çiçek|🍀 yonca şans|🌱 bitki filiz|🐱 kedi|🐶 köpek|🦊 tilki|🐼 panda|🦉 baykuş|🦋 kelebek|🔁 tekrar|🔄 yenile|⏸ duraklat|⏯ oynat|🔇 sessiz|🔊 ses|🅰️ a harf|1️⃣ bir|2️⃣ iki|3️⃣ üç',
+};
+const ALL = Object.values(EMOJI).flatMap(s => s.split('|')).map(x => { const i = x.indexOf(' '); return { e: x.slice(0, i), k: x.slice(i + 1).toLocaleLowerCase('tr') }; });
+let cat = 'Popüler';
+const tr = s => s.toLocaleLowerCase('tr');
+function renderGrid() {
+  const q = tr($('search').value.trim()), it = list()[sel], grid = $('grid');
+  const pool = q ? ALL.filter(x => x.k.includes(q) || x.e === q) : EMOJI[cat].split('|').map(x => ({ e: x.slice(0, x.indexOf(' ')) }));
+  const seen = new Set(); grid.textContent = '';
+  pool.forEach((x, i) => {
+    if (seen.has(x.e)) return; seen.add(x.e);
+    const b = el('button', it && it.emoji === x.e ? 'on' : '', x.e);
+    b.style.animationDelay = Math.min(i, 40) * 8 + 'ms';
+    b.onclick = () => { const cur = list()[sel]; if (!cur) return; cur.emoji = x.e; delete cur.icon; dirty(); render(); closePicker(); };
+    grid.append(b);
+  });
+  if (!seen.size) grid.append(el('div', null, 'Bulunamadı. Başka bir kelime dene.'));
+  [...$('cats').children].forEach(c => c.classList.toggle('on', !q && c.textContent === cat));
+}
+for (const name of Object.keys(EMOJI)) {
+  const b = el('button', null, name);
+  b.onclick = () => { cat = name; $('search').value = ''; renderGrid(); };
+  $('cats').append(b);
+}
+function openPicker() {
+  const it = list()[sel]; if (!it) return;
+  const now = $('pickerNow'); now.textContent = ''; now.append(iconNode(it));
+  $('search').value = ''; renderGrid();
+  $('picker').classList.add('open'); $('picker').setAttribute('aria-hidden', 'false');
+  setTimeout(() => $('search').focus(), 60);
+}
+function closePicker() { $('picker').classList.remove('open'); $('picker').setAttribute('aria-hidden', 'true'); }
+$('iconBtn').onclick = openPicker;
+$('search').oninput = renderGrid;
+$('pickerClose').onclick = closePicker;
+$('picker').onclick = e => { if (e.target === $('picker')) closePicker(); };
+addEventListener('keydown', e => { if (e.key === 'Escape' && $('picker').classList.contains('open')) closePicker(); });
+$('auto').onclick = () => { const it = list()[sel]; if (!it) return; delete it.emoji; delete it.icon; dirty(); render(); closePicker(); };
+
 // ---------------------------------------------------------------- general settings
 radios($('size'), [['tiny', 'Çok küçük'], ['small', 'Küçük'], ['medium', 'Orta'], ['large', 'Büyük'], ['xlarge', 'Çok büyük']],
   v => { cfg.size = v; dirty(); });
@@ -466,19 +570,23 @@ document.querySelectorAll('[data-mod]').forEach(c => c.onchange = () => {
   dirty();
 });
 
+function fixUrls(items) {
+  for (const it of items) { if (typeof it.url === 'string') it.url = normalizeURL(it.url); if ('items' in it) fixUrls(it.items); }
+  return items;
+}
 function clean(items) { // drop half-filled rows before saving
-  return items.filter(it => { const t = typeOf(it); return t === 'group' || t === 'other' || (it[t] && it[t] !== 'https://'); })
+  return items.filter(it => { const t = typeOf(it); return t === 'group' || t === 'other' || it[t]; })
     .map(it => 'items' in it ? { ...it, items: clean(it.items) } : it);
 }
 $('save').onclick = () => {
   if (!cfg.trigger.length) { go(2); setStatus('En az bir açma tuşu seç'); return; }
   setStatus('Kaydediliyor…');
-  post({ action: 'save', cfg: { ...cfg, items: clean(cfg.items) } });
+  post({ action: 'save', cfg: { ...cfg, items: clean(fixUrls(cfg.items)) } });
 };
 
 window.WL = {
   init(data) {
-    cfg = data; cfg.items = normalize(cfg.items); cfg.trigger = arr(cfg.trigger);
+    cfg = data; cfg.items = fixUrls(normalize(cfg.items)); cfg.trigger = arr(cfg.trigger);
     stack = []; sel = cfg.items.length ? 0 : -1; slide = 0;
     for (const id of ['hideOthers', 'favicons']) $(id).checked = !!cfg[id];
     setRadio($('size'), cfg.size || 'medium');
@@ -491,7 +599,7 @@ window.WL = {
   icon(key, url) { icons[key] = url; renderMenu(); renderWheel(); },
   picked(what, value) {
     const it = list()[sel]; if (!it) return;
-    if (what === 'icon') it.icon = value; else it[what] = value;
+    if (what === 'icon') { it.icon = value; delete it.emoji; closePicker(); } else it[what] = value;
     dirty(); render();
   },
   saved() { setStatus('Kaydedildi ✓'); },

@@ -30,6 +30,22 @@ local cx, cy = geo.clamp(5, 2000, 100, { x = 0, y = 0, w = 1000, h = 800 })
 eq(cx, 100, "clamp x")
 eq(cy, 700, "clamp y")
 
+-- ---- url repair
+local util = dofile("WheelLauncher.spoon/util.lua")
+local N = util.normalizeURL
+eq(N("https://https://chatgpt.com"), "https://chatgpt.com", "double scheme")
+eq(N("https://https//chatgpt.com/"), "https://chatgpt.com/", "double scheme, missing colon")
+eq(N("https//chatgpt.com"), "https://chatgpt.com", "missing colon")
+eq(N("  chatgpt.com "), "https://chatgpt.com", "no scheme")
+eq(N("http://localhost:3000"), "http://localhost:3000", "http kept")
+eq(N("localhost:3000"), "https://localhost:3000", "host:port is not a scheme")
+eq(N("httpbin.org"), "https://httpbin.org", "http-looking host")
+eq(N("obsidian://open?vault=x"), "obsidian://open?vault=x", "other scheme kept")
+eq(N("mailto:a@b.c"), "mailto:a@b.c", "mailto kept")
+eq(N("https://"), "", "scheme only = empty")
+local tree = util.fixItems({ { url = "x.com" }, { items = { { url = "https://https://y.com" } } } })
+eq(tree[2].items[1].url, "https://y.com", "nested fix")
+
 -- ---- fake Hammerspoon
 local function stub()
   return setmetatable({}, {
@@ -113,6 +129,10 @@ eq(canvas[4].text, "github.com", "hub shows label")
 flags(none)
 eq(wl._open, false, "release closes")
 eq(ran[#ran], "https://github.com", "release runs the item")
+wl.cfg.items[2].url = "https://https://github.com"
+wl:_run(wl.cfg.items[2])
+eq(ran[#ran], "https://github.com", "broken url is repaired when run")
+table.remove(ran)
 eq(canvas.deleted, true, "canvas removed")
 
 mouse.x = 500
